@@ -1,5 +1,5 @@
 // Offline cache for Dex Level Tracker. Bump VERSION when you change any file.
-const VERSION = "dex-v3";
+const VERSION = "dex-v4";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
                "./icon-maskable-512.png", "./apple-touch-icon.png"];
 

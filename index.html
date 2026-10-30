@@ -165,11 +165,15 @@ details summary { cursor: pointer; font-size: 0.8rem; text-transform: uppercase;
 .tap-btns button { font: inherit; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 16px 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .tap-btns button .n { font-family: var(--font-data); font-size: 1.6rem; font-weight: 600; line-height: 1.1; }
 .tap-btns button .mgv { font-size: 0.8rem; color: var(--muted); }
-.tap-btns button.main { background: var(--accent); border-color: var(--accent); color: var(--surface); }
-.tap-btns button.main .mgv { color: var(--surface); opacity: 0.85; }
 .tap-btns button:focus-visible, .sheet .btn:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
 .tap-done { font-size: 1.1rem; font-weight: 700; }
-.tap-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.tap-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.tap-actions .spacer { flex: 1 1 auto; }
+.tap-sub { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+.btn.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+.tap-btns button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.tap-btns button[aria-pressed="true"] .mgv { color: var(--surface); opacity: 0.85; }
+.tap-deleted { color: var(--muted); text-decoration: line-through; }
 
 /* feel chart + check-ins */
 #feel { height: 160px; margin-top: 4px; border-top: 1px solid var(--line); padding-top: 4px; }
@@ -390,23 +394,22 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
 
   <div class="sheet-backdrop" id="tapSheet" hidden>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tapTitle">
-      <h2 id="tapTitle">Log a dose now</h2>
-      <div class="tap-clock" id="tapClock">--:--</div>
-      <div class="tap-last" id="tapLast"></div>
+      <h2 id="tapTitle">Dose logged</h2>
+      <div class="tap-clock" id="tapDone">--</div>
       <div class="tap-merge" id="tapMerge" hidden></div>
-      <div id="tapChoose">
+      <div class="tap-last" id="tapLast"></div>
+      <div>
+        <div class="tap-sub">Change amount</div>
         <div class="tap-btns">
           <button type="button" data-mg="2.5"><span class="n">½</span><span class="mgv">2.5 mg</span></button>
-          <button type="button" data-mg="5" class="main"><span class="n">1</span><span class="mgv">5 mg</span></button>
+          <button type="button" data-mg="5"><span class="n">1</span><span class="mgv">5 mg</span></button>
           <button type="button" data-mg="10"><span class="n">2</span><span class="mgv">10 mg</span></button>
         </div>
       </div>
-      <div id="tapResult" hidden>
-        <div class="tap-done" id="tapDone"></div>
-      </div>
       <div class="tap-actions">
-        <button type="button" class="btn ghost" id="tapUndo" hidden>Undo</button>
-        <button type="button" class="btn ghost" id="tapCancel">Cancel</button>
+        <button type="button" class="btn danger" id="tapDelete">Delete dose</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn primary" id="tapClose">Done</button>
       </div>
     </div>
   </div>
@@ -430,7 +433,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       <div class="field"><label for="sHalf">Half-life (h)</label><input id="sHalf" type="number" min="4" max="30" step="0.5" value="11"></div>
       <div class="field"><label for="sTmax">Time to peak (h)</label><input id="sTmax" type="number" min="1" max="6" step="0.25" value="3"></div>
     </div>
-    <p class="note">One-compartment oral model with first-order absorption and elimination (Bateman function), 90% bioavailability, volume of distribution 3.5 L/kg. Doses add together by superposition. It's a population-average estimate, not a measured blood level; urine pH alone can shift the real half-life by several hours. Everything is stored only in this browser on this device; nothing is sent anywhere. For an NFC tag or shortcut, open this page's address with <code>?tap</code> on the end to get the quick-log buttons. Use Export CSV now and then as a backup. CSV import also reads the older two-column format: <code>time,dose_mg</code> with times like 2026-10-06 09:50.</p>
+    <p class="note">One-compartment oral model with first-order absorption and elimination (Bateman function), 90% bioavailability, volume of distribution 3.5 L/kg. Doses add together by superposition. It's a population-average estimate, not a measured blood level; urine pH alone can shift the real half-life by several hours. Everything is stored only in this browser on this device; nothing is sent anywhere. For an NFC tag or shortcut, open this page's address with <code>?tap</code> on the end: it logs 5 mg straight away and lets you change or delete it. <code>?dose=2.5</code> or <code>?dose=10</code> logs that amount instead. Use Export CSV now and then as a backup. CSV import also reads the older two-column format: <code>time,dose_mg</code> with times like 2026-10-06 09:50.</p>
   </details>
 </div>
 
@@ -1091,88 +1094,116 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
   store = localStore();
 
   // ---------- NFC / link quick-log ----------
-  // Open the app with ?tap (or #tap, ?dose=5, #dose-10) to get the quick-log sheet.
+  // Opening this page with ?tap (or #tap, ?dose=5, #dose-10) logs a dose straight away,
+  // then shows a sheet to change the amount or delete it.
   const MERGE_MS = 3 * 60000;   // a second tap this soon adds to the same dose
-  const SOON_MS = 60 * 60000;   // warn if the last dose was less than an hour ago
-  let tapTimer = null, tapClockTimer = null, tapUndo = null;
+  const SOON_MS = 60 * 60000;   // highlight if the previous dose was less than an hour ago
+  let tapEntry = null;          // { id, base, added, deleted } — base is the merged dose's mg before this tap
   function tapRequest() {
     const q = new URLSearchParams(location.search);
     const h = decodeURIComponent(location.hash.replace(/^#/, ""));
     const hm2 = h.match(/^dose-?([\d.]+)$/);
     if (!(q.has("tap") || q.has("dose") || h === "tap" || hm2)) return null;
     const want = parseFloat(q.get("dose") || (hm2 && hm2[1]));
-    return { preferred: [2.5, 5, 10].includes(want) ? want : 5 };
+    return { mg: [2.5, 5, 10].includes(want) ? want : 5 };
   }
   function clearTapParams() {
     try { history.replaceState(null, "", location.pathname); } catch (e) {}
   }
-  function lastDose() { const now = Date.now(); const past = doses.filter(d => d.t <= now); return past[past.length - 1] || null; }
-  function renderTapInfo() {
-    const now = Date.now();
-    $("tapClock").textContent = hm(new Date(now));
-    const last = lastDose();
+  function renderTapSheet() {
+    if (!tapEntry) return;
+    const d = doses.find(x => x.id === tapEntry.id);
+    const done = $("tapDone");
+    if (tapEntry.deleted || !d) {
+      $("tapTitle").textContent = "Dose deleted";
+      done.innerHTML = `<span class="tap-deleted">${tapEntry.added} mg</span>`;
+      $("tapMerge").hidden = true;
+    } else {
+      $("tapTitle").textContent = tapEntry.base != null ? "Dose updated" : "Dose logged";
+      done.textContent = `${d.mg} mg · ${hm(new Date(d.t))}`;
+      const m = $("tapMerge");
+      if (tapEntry.base != null) {
+        m.hidden = false;
+        m.textContent = `Added ${tapEntry.added} mg to your ${tapEntry.base} mg dose from ${agoText(Date.now() - d.t)}.`;
+      } else m.hidden = true;
+    }
+    // previous dose = the latest one before the logged entry
+    const refT = d ? d.t : Date.now();
+    const prev = doses.filter(x => x.id !== tapEntry.id && x.t < refT).pop();
     const el = $("tapLast");
-    const merge = $("tapMerge");
-    if (!last) { el.textContent = "No doses logged yet."; el.classList.remove("soon"); merge.hidden = true; return; }
-    const gap = now - last.t;
+    const now = Date.now();
     const lvl = levelAt(now), slope = levelAt(now + 15 * 60000) - lvl;
     const dir = Math.abs(slope) < 0.05 ? "steady" : slope > 0 ? "rising" : "falling";
-    el.innerHTML = `Last dose <b>${last.mg} mg</b> at <b>${hm(new Date(last.t))}</b> · <b>${agoText(gap)}</b><br>Level now ≈ ${lvl.toFixed(0)} ng/mL, ${dir}`;
-    el.classList.toggle("soon", gap < SOON_MS);
-    if (gap < MERGE_MS) {
-      merge.hidden = false;
-      merge.textContent = `You logged ${last.mg} mg ${agoText(gap)}. Tapping an amount adds it to that dose.`;
-    } else merge.hidden = true;
+    if (prev) {
+      const gap = refT - prev.t;
+      el.innerHTML = `Previous dose <b>${prev.mg} mg</b> at <b>${hm(new Date(prev.t))}</b> · <b>${agoText(now - prev.t)}</b><br>Level now ≈ ${lvl.toFixed(0)} ng/mL, ${dir}`;
+      el.classList.toggle("soon", gap < SOON_MS && !tapEntry.deleted);
+    } else {
+      el.innerHTML = `No earlier doses logged.<br>Level now ≈ ${lvl.toFixed(0)} ng/mL, ${dir}`;
+      el.classList.remove("soon");
+    }
+    document.querySelectorAll("#tapSheet [data-mg]").forEach(b =>
+      b.setAttribute("aria-pressed", String(!tapEntry.deleted && +b.dataset.mg === tapEntry.added)));
+    const del = $("tapDelete");
+    del.textContent = tapEntry.deleted ? "Restore dose" : "Delete dose";
   }
-  function openTapSheet(preferred) {
-    $("tapChoose").hidden = false; $("tapResult").hidden = true; $("tapUndo").hidden = true;
-    $("tapCancel").textContent = "Cancel";
-    document.querySelectorAll("#tapSheet [data-mg]").forEach(b => b.classList.toggle("main", +b.dataset.mg === preferred));
-    renderTapInfo();
-    $("tapSheet").hidden = false;
-    clearInterval(tapClockTimer); tapClockTimer = setInterval(renderTapInfo, 10000);
-    const main = document.querySelector(`#tapSheet [data-mg="${preferred}"]`);
-    setTimeout(() => main && main.focus(), 50);
-  }
-  function closeTapSheet() {
-    $("tapSheet").hidden = true;
-    clearInterval(tapClockTimer); clearTimeout(tapTimer); tapUndo = null;
-  }
-  document.querySelectorAll("#tapSheet [data-mg]").forEach(b => b.addEventListener("click", async () => {
-    const mg = +b.dataset.mg;
+  async function quickLog(mg) {
     const now = Date.now();
-    const last = lastDose();
+    const past = doses.filter(d => d.t <= now);
+    const last = past[past.length - 1];
     try {
       if (last && now - last.t < MERGE_MS) {
-        const before = last.mg, total = +(before + mg).toFixed(2);
-        await store.update(last.id, { mg: total });
-        tapUndo = () => store.update(last.id, { mg: before });
-        $("tapDone").textContent = `Updated: ${total} mg at ${hm(new Date(last.t))}`;
+        await store.update(last.id, { mg: +(last.mg + mg).toFixed(2) });
+        tapEntry = { id: last.id, base: last.mg, added: mg, deleted: false };
       } else {
         const id = await store.add({ t: now, mg });
-        tapUndo = () => store.remove(id);
-        $("tapDone").textContent = `Logged ${mg} mg at ${hm(new Date(now))}`;
+        tapEntry = { id, base: null, added: mg, deleted: false, t: now };
       }
-    } catch (e) { $("tapDone").textContent = "Couldn't save that dose."; }
-    clearInterval(tapClockTimer);
-    $("tapChoose").hidden = true; $("tapMerge").hidden = true; $("tapResult").hidden = false;
-    $("tapUndo").hidden = !tapUndo; $("tapCancel").textContent = "Done";
-    $("tapCancel").focus();
-    clearTimeout(tapTimer); tapTimer = setTimeout(closeTapSheet, 8000);
+    } catch (e) { setStatus("Couldn't save that dose. Log it with the form instead."); return; }
+    $("tapSheet").hidden = false;
+    renderTapSheet();
+    setTimeout(() => $("tapClose").focus(), 50);
+  }
+  function closeTapSheet() { $("tapSheet").hidden = true; tapEntry = null; }
+  document.querySelectorAll("#tapSheet [data-mg]").forEach(b => b.addEventListener("click", async () => {
+    if (!tapEntry) return;
+    const mg = +b.dataset.mg;
+    try {
+      if (tapEntry.deleted) {
+        // picking an amount after deleting brings the dose back with that amount
+        if (tapEntry.base != null) await store.update(tapEntry.id, { mg: +(tapEntry.base + mg).toFixed(2) });
+        else tapEntry.id = await store.add({ t: tapEntry.t, mg });
+        tapEntry.deleted = false;
+      } else {
+        await store.update(tapEntry.id, { mg: tapEntry.base != null ? +(tapEntry.base + mg).toFixed(2) : mg });
+      }
+      tapEntry.added = mg;
+    } catch (e) { setStatus("Couldn't change that dose. Edit it in the log instead."); }
+    renderTapSheet();
   }));
-  $("tapUndo").addEventListener("click", async () => {
-    if (!tapUndo) return;
-    try { await tapUndo(); setStatus("Undone."); } catch (e) { setStatus("Couldn't undo. Delete it from the log instead."); }
-    closeTapSheet();
+  $("tapDelete").addEventListener("click", async () => {
+    if (!tapEntry) return;
+    try {
+      if (!tapEntry.deleted) {
+        if (tapEntry.base != null) await store.update(tapEntry.id, { mg: tapEntry.base });
+        else { const d = doses.find(x => x.id === tapEntry.id); tapEntry.t = d ? d.t : tapEntry.t; await store.remove(tapEntry.id); }
+        tapEntry.deleted = true;
+      } else {
+        if (tapEntry.base != null) await store.update(tapEntry.id, { mg: +(tapEntry.base + tapEntry.added).toFixed(2) });
+        else tapEntry.id = await store.add({ t: tapEntry.t, mg: tapEntry.added });
+        tapEntry.deleted = false;
+      }
+    } catch (e) { setStatus("Couldn't change that dose. Edit it in the log instead."); }
+    renderTapSheet();
   });
-  $("tapCancel").addEventListener("click", closeTapSheet);
+  $("tapClose").addEventListener("click", closeTapSheet);
   $("tapSheet").addEventListener("click", (e) => { if (e.target === $("tapSheet")) closeTapSheet(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tapSheet").hidden) closeTapSheet(); });
   function checkTap() {
     const req = tapRequest();
     if (!req) return;
-    clearTapParams();
-    openTapSheet(req.preferred);
+    clearTapParams();          // clear first so a reload or back-swipe never logs twice
+    quickLog(req.mg);
   }
   checkTap();
   window.addEventListener("hashchange", checkTap);
