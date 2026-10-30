@@ -36,6 +36,7 @@ img { max-width: 100%; }
   --c-focus: #2f6fd0;
   --c-mood: #2e9b5f;
   --c-anx: #8a4fc7;
+  --c-mot: #b8327a;
   --band-soft: rgba(46,155,95,0.12);
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-data: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
@@ -45,7 +46,7 @@ img { max-width: 100%; }
     --bg: #0e171b; --surface: #15232a; --fg: #e3edf0; --muted: #8fa4ac; --line: #26373e;
     --accent: #4cc3cc; --accent-soft: rgba(76,195,204,0.16); --now: #ff7a8a; --dose: #e9b04a;
     --high: #ff8a80; --high-soft: rgba(255,138,128,0.13); --danger: #ff8a80;
-    --c-focus: #7aa8f5; --c-mood: #5fcf8e; --c-anx: #c39bf2; --band-soft: rgba(95,207,142,0.12);
+    --c-focus: #7aa8f5; --c-mood: #5fcf8e; --c-anx: #c39bf2; --c-mot: #f08cc0; --band-soft: rgba(95,207,142,0.12);
     color-scheme: dark;
   }
 }
@@ -53,7 +54,7 @@ img { max-width: 100%; }
   --bg: #0e171b; --surface: #15232a; --fg: #e3edf0; --muted: #8fa4ac; --line: #26373e;
   --accent: #4cc3cc; --accent-soft: rgba(76,195,204,0.16); --now: #ff7a8a; --dose: #e9b04a;
   --high: #ff8a80; --high-soft: rgba(255,138,128,0.13); --danger: #ff8a80;
-  --c-focus: #7aa8f5; --c-mood: #5fcf8e; --c-anx: #c39bf2; --band-soft: rgba(95,207,142,0.12);
+  --c-focus: #7aa8f5; --c-mood: #5fcf8e; --c-anx: #c39bf2; --c-mot: #f08cc0; --band-soft: rgba(95,207,142,0.12);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -147,32 +148,57 @@ details summary { cursor: pointer; font-size: 0.8rem; text-transform: uppercase;
 .settings { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
 .note { font-size: 0.8rem; color: var(--muted); max-width: 65ch; }
 
+/* NFC quick-log sheet */
+.sheet-backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(8, 18, 22, 0.55); display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--surface); color: var(--fg); width: 100%; max-width: 520px; border-radius: 18px 18px 0 0;
+  padding: 22px max(20px, env(safe-area-inset-right, 0px)) calc(22px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
+  display: flex; flex-direction: column; gap: 14px; box-shadow: 0 -8px 30px rgba(0,0,0,0.25); }
+@media (min-width: 560px) { .sheet-backdrop { align-items: center; } .sheet { border-radius: 18px; } }
+.sheet h2 { font-size: 0.8rem; }
+.tap-clock { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 2.2rem; font-weight: 600; line-height: 1; }
+.tap-last { font-size: 0.95rem; color: var(--muted); }
+.tap-last b { color: var(--fg); }
+.tap-last.soon { color: var(--high); }
+.tap-last.soon b { color: var(--high); }
+.tap-merge { font-size: 0.9rem; background: var(--accent-soft); border-radius: 10px; padding: 8px 12px; }
+.tap-btns { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 10px; }
+.tap-btns button { font: inherit; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 16px 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.tap-btns button .n { font-family: var(--font-data); font-size: 1.6rem; font-weight: 600; line-height: 1.1; }
+.tap-btns button .mgv { font-size: 0.8rem; color: var(--muted); }
+.tap-btns button.main { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.tap-btns button.main .mgv { color: var(--surface); opacity: 0.85; }
+.tap-btns button:focus-visible, .sheet .btn:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+.tap-done { font-size: 1.1rem; font-weight: 700; }
+.tap-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
 /* feel chart + check-ins */
-#feel { height: 130px; margin-top: 4px; border-top: 1px solid var(--line); padding-top: 4px; }
+#feel { height: 160px; margin-top: 4px; border-top: 1px solid var(--line); padding-top: 4px; }
 .legend .lf::before { border-top-color: var(--c-focus); }
 .legend .lm::before { border-top-color: var(--c-mood); }
 .legend .la::before { border-top-color: var(--c-anx); }
+.legend .lmo::before { border-top-color: var(--c-mot); }
 .legend .band::before { height: 10px; border: 0; background: var(--band-soft); outline: 1px solid var(--c-mood); }
 .feel-legend { margin-top: 6px; }
 .checkin { display: flex; flex-direction: column; gap: 10px; }
 .scale { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); align-items: center; gap: 4px 12px; }
 .scale .name { font-weight: 700; font-size: 0.9rem; }
 .scale .name small { display: block; font-weight: 400; font-size: 0.72rem; color: var(--muted); }
-.pick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; max-width: 340px; }
-.pick button { font: inherit; font-family: var(--font-data); font-weight: 600; padding: 7px 0; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+.pick { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; max-width: 520px; }
+.pick button { font: inherit; font-family: var(--font-data); font-weight: 600; font-size: 0.88rem; padding: 8px 0; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
 .pick button[aria-pressed="true"] { color: var(--surface); border-color: transparent; }
 .pick[data-k="focus"] button[aria-pressed="true"] { background: var(--c-focus); }
 .pick[data-k="mood"] button[aria-pressed="true"] { background: var(--c-mood); }
 .pick[data-k="anx"] button[aria-pressed="true"] { background: var(--c-anx); }
+.pick[data-k="mot"] button[aria-pressed="true"] { background: var(--c-mot); }
 .pick button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ends { grid-column: 2; display: flex; justify-content: space-between; max-width: 340px; font-size: 0.72rem; color: var(--muted); margin-top: -2px; }
+.ends { grid-column: 2; display: flex; justify-content: space-between; max-width: 520px; font-size: 0.72rem; color: var(--muted); margin-top: -2px; }
 .checkin-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
 .checkin-row .field.grow { flex: 1 1 200px; }
 .checkin-row input[type="text"] { width: 100%; font-family: var(--font-body); }
 .kpi { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
-td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var(--c-anx); }
+td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var(--c-anx); } td.mo { color: var(--c-mot); }
 .log .ci { font-family: var(--font-data); font-size: 0.85rem; }
-.log .ci b.f { color: var(--c-focus); } .log .ci b.m { color: var(--c-mood); } .log .ci b.a { color: var(--c-anx); }
+.log .ci b.f { color: var(--c-focus); } .log .ci b.m { color: var(--c-mood); } .log .ci b.a { color: var(--c-anx); } .log .ci b.mo { color: var(--c-mot); }
 .log .ci .nt { font-family: var(--font-body); color: var(--muted); }
 .tag { font-family: var(--font-body); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; margin-right: 6px; }
 .band-fields { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--muted); }
@@ -180,6 +206,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
 
 @media (max-width: 520px) {
   .scale { grid-template-columns: 1fr; }
+  .pick { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
   .ends { grid-column: 1; }
 }
 @media (max-width: 620px) {
@@ -234,7 +261,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     <canvas id="chart" aria-label="Estimated plasma concentration over time"></canvas>
     <canvas id="feel" aria-label="Your check-in ratings over the same time span"></canvas>
     <div class="legend feel-legend">
-      <span class="lf">Focus</span><span class="lm">Mood</span><span class="la">Anxiety</span><span class="band">Highlight band</span>
+      <span class="lf">Focus</span><span class="lm">Mood</span><span class="la">Anxiety</span><span class="lmo">Motivation</span><span class="band">Highlight band</span>
     </div>
     <div class="nav">
       <button type="button" class="iconbtn" id="prevBtn" aria-label="Earlier">← Earlier</button>
@@ -266,18 +293,23 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     </div>
     <div class="scale">
       <div class="name">Focus</div>
-      <div class="pick" data-k="focus" role="group" aria-label="Focus, 1 to 5"></div>
+      <div class="pick" data-k="focus" role="group" aria-label="Focus, 1 to 10"></div>
       <div class="ends"><span>scattered</span><span>locked in</span></div>
     </div>
     <div class="scale">
       <div class="name">Mood<small>incl. enjoyment</small></div>
-      <div class="pick" data-k="mood" role="group" aria-label="Mood, 1 to 5"></div>
+      <div class="pick" data-k="mood" role="group" aria-label="Mood, 1 to 10"></div>
       <div class="ends"><span>flat, no joy</span><span>good, enjoying things</span></div>
     </div>
     <div class="scale">
       <div class="name">Anxiety</div>
-      <div class="pick" data-k="anx" role="group" aria-label="Anxiety, 1 to 5"></div>
+      <div class="pick" data-k="anx" role="group" aria-label="Anxiety, 1 to 10"></div>
       <div class="ends"><span>calm</span><span>very anxious</span></div>
+    </div>
+    <div class="scale">
+      <div class="name">Motivation</div>
+      <div class="pick" data-k="mot" role="group" aria-label="Motivation, 1 to 10"></div>
+      <div class="ends"><span>can't get started</span><span>driven</span></div>
     </div>
     <div class="checkin-row">
       <div class="field grow">
@@ -299,11 +331,11 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     </div>
     <div class="tablewrap" style="margin-top:0">
       <table>
-        <thead><tr><th>Estimated level</th><th>Check-ins</th><th>Focus</th><th>Mood</th><th>Anxiety</th></tr></thead>
+        <thead><tr><th>Estimated level</th><th>Check-ins</th><th>Focus</th><th>Mood</th><th>Anxiety</th><th>Motivation</th></tr></thead>
         <tbody id="corrTable"></tbody>
       </table>
     </div>
-    <p class="hint">Averages of your 1–5 ratings, grouped by the modelled level at the moment you checked in. "Rising" and "falling" split the same check-ins by which way the level was heading, which helps separate comedown effects from high-level effects. Patterns get reliable after 20 or more check-ins.</p>
+    <p class="hint">Averages of your 1–10 ratings, grouped by the modelled level at the moment you checked in. "Rising" and "falling" split the same check-ins by which way the level was heading, which helps separate comedown effects from high-level effects. Patterns get reliable after 20 or more check-ins.</p>
   </section>
 
   <section class="card" aria-labelledby="statsTitle">
@@ -356,6 +388,29 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     <p class="hint">Tap a day to see its curve. Set the threshold to whatever counts as high for you; it marks the dashed line on the graph. The optional band shades a range on the graph, such as where your focus is best, so you can compare it with your check-ins.</p>
   </section>
 
+  <div class="sheet-backdrop" id="tapSheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tapTitle">
+      <h2 id="tapTitle">Log a dose now</h2>
+      <div class="tap-clock" id="tapClock">--:--</div>
+      <div class="tap-last" id="tapLast"></div>
+      <div class="tap-merge" id="tapMerge" hidden></div>
+      <div id="tapChoose">
+        <div class="tap-btns">
+          <button type="button" data-mg="2.5"><span class="n">½</span><span class="mgv">2.5 mg</span></button>
+          <button type="button" data-mg="5" class="main"><span class="n">1</span><span class="mgv">5 mg</span></button>
+          <button type="button" data-mg="10"><span class="n">2</span><span class="mgv">10 mg</span></button>
+        </div>
+      </div>
+      <div id="tapResult" hidden>
+        <div class="tap-done" id="tapDone"></div>
+      </div>
+      <div class="tap-actions">
+        <button type="button" class="btn ghost" id="tapUndo" hidden>Undo</button>
+        <button type="button" class="btn ghost" id="tapCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <section class="log">
     <div class="log-head">
       <h2>Dose log</h2>
@@ -375,7 +430,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       <div class="field"><label for="sHalf">Half-life (h)</label><input id="sHalf" type="number" min="4" max="30" step="0.5" value="11"></div>
       <div class="field"><label for="sTmax">Time to peak (h)</label><input id="sTmax" type="number" min="1" max="6" step="0.25" value="3"></div>
     </div>
-    <p class="note">One-compartment oral model with first-order absorption and elimination (Bateman function), 90% bioavailability, volume of distribution 3.5 L/kg. Doses add together by superposition. It's a population-average estimate, not a measured blood level; urine pH alone can shift the real half-life by several hours. Everything is stored only in this browser on this device; nothing is sent anywhere. Use Export CSV now and then as a backup. CSV import also reads the older two-column format: <code>time,dose_mg</code> with times like 2026-10-06 09:50.</p>
+    <p class="note">One-compartment oral model with first-order absorption and elimination (Bateman function), 90% bioavailability, volume of distribution 3.5 L/kg. Doses add together by superposition. It's a population-average estimate, not a measured blood level; urine pH alone can shift the real half-life by several hours. Everything is stored only in this browser on this device; nothing is sent anywhere. For an NFC tag or shortcut, open this page's address with <code>?tap</code> on the end to get the quick-log buttons. Use Export CSV now and then as a backup. CSV import also reads the older two-column format: <code>time,dose_mg</code> with times like 2026-10-06 09:50.</p>
   </details>
 </div>
 
@@ -556,9 +611,9 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       else {
         mg.className = "ci";
         const part = (k, cls, lab) => d[k] != null ? `<b class="${cls}">${lab}${d[k]}</b> ` : "";
-        mg.innerHTML = `<span class="tag">Check-in</span>${part("focus", "f", "F")}${part("mood", "m", "M")}${part("anx", "a", "A")}`;
+        mg.innerHTML = `<span class="tag">Check-in</span>${part("focus", "f", "F")}${part("mood", "m", "M")}${part("anx", "a", "A")}${part("mot", "mo", "Mo")}`;
         if (d.note) { const n = document.createElement("span"); n.className = "nt"; n.textContent = " · " + d.note; mg.appendChild(n); }
-        mg.title = "F = focus, M = mood, A = anxiety";
+        mg.title = "Out of 10. F = focus, M = mood, A = anxiety, Mo = motivation";
       }
       const del = document.createElement("button");
       del.type = "button"; del.className = "del"; del.textContent = "Delete";
@@ -739,13 +794,13 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     feelCanvas.width = Math.round(W * dpr); feelCanvas.height = Math.round(H * dpr);
     fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     fctx.clearRect(0, 0, W, H);
-    const c = { muted: css("--muted"), line: css("--line"), f: css("--c-focus"), m: css("--c-mood"), a: css("--c-anx"), surface: css("--surface") };
+    const c = { muted: css("--muted"), line: css("--line"), f: css("--c-focus"), m: css("--c-mood"), a: css("--c-anx"), mo: css("--c-mot"), surface: css("--surface") };
     const font = css("--font-data");
     const T = 10, B = 10;
     const x = (t) => L + (t - t0) / (t1 - t0) * (W - L - R);
-    const y = (v) => T + (1 - (v - 1) / 4) * (H - T - B);
+    const y = (v) => T + (1 - (v - 1) / 9) * (H - T - B);
     fctx.font = `10px ${font}`; fctx.textBaseline = "middle"; fctx.textAlign = "right";
-    [1, 3, 5].forEach(v => {
+    [1, 5, 10].forEach(v => {
       fctx.strokeStyle = c.line; fctx.lineWidth = 1;
       fctx.beginPath(); fctx.moveTo(L, Math.round(y(v)) + 0.5); fctx.lineTo(W - R, Math.round(y(v)) + 0.5); fctx.stroke();
       fctx.fillStyle = c.muted; fctx.fillText(String(v), L - 6, y(v));
@@ -756,7 +811,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       fctx.fillText(checkins.length ? "No check-ins in this time span" : "Your check-ins will appear here", L + (W - L - R) / 2, H / 2);
       return;
     }
-    const series = [["focus", c.f, -2], ["mood", c.m, 0], ["anx", c.a, 2]];
+    const series = [["focus", c.f, -3], ["mood", c.m, -1], ["anx", c.a, 1], ["mot", c.mo, 3]];
     series.forEach(([k, col, off]) => {
       const pts = inView.filter(ci => ci[k] != null);
       if (!pts.length) return;
@@ -779,7 +834,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     $("corrCount").textContent = `${rated.length} check-in${rated.length === 1 ? "" : "s"}`;
     if (!rated.length) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="5" class="empty">No check-ins yet. Rate how you feel a few times a day and this table fills in.</td>`;
+      tr.innerHTML = `<td colspan="6" class="empty">No check-ins yet. Rate how you feel a few times a day and this table fills in.</td>`;
       tb.appendChild(tr);
       return;
     }
@@ -797,19 +852,20 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       const tr = document.createElement("tr");
       if (divider && name === "Level rising") tr.style.borderTop = "2px solid var(--line)";
       tr.innerHTML = `<td>${name}</td><td>${g.length || "–"}</td><td class="f">${g.length ? avg(g, "focus") : "–"}</td>` +
-                     `<td class="m">${g.length ? avg(g, "mood") : "–"}</td><td class="a">${g.length ? avg(g, "anx") : "–"}</td>`;
+                     `<td class="m">${g.length ? avg(g, "mood") : "–"}</td><td class="a">${g.length ? avg(g, "anx") : "–"}</td><td class="mo">${g.length ? avg(g, "mot") : "–"}</td>`;
       tb.appendChild(tr);
     });
   }
 
   // ---------- check-in form ----------
-  const picks = { focus: null, mood: null, anx: null };
+  const picks = { focus: null, mood: null, anx: null, mot: null };
+  const scaleName = { focus: "Focus", mood: "Mood", anx: "Anxiety", mot: "Motivation" };
   document.querySelectorAll(".pick").forEach(group => {
     const k = group.dataset.k;
-    for (let v = 1; v <= 5; v++) {
+    for (let v = 1; v <= 10; v++) {
       const b = document.createElement("button");
       b.type = "button"; b.textContent = v; b.setAttribute("aria-pressed", "false");
-      b.setAttribute("aria-label", `${k === "anx" ? "Anxiety" : k[0].toUpperCase() + k.slice(1)} ${v}`);
+      b.setAttribute("aria-label", `${scaleName[k]} ${v}`);
       b.addEventListener("click", () => {
         picks[k] = picks[k] === v ? null : v;
         group.querySelectorAll("button").forEach((x, i) => x.setAttribute("aria-pressed", String(picks[k] === i + 1)));
@@ -819,11 +875,11 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
   });
   $("ciWhen").value = toLocalInput(new Date());
   $("ciSave").addEventListener("click", async () => {
-    if (picks.focus == null && picks.mood == null && picks.anx == null) { setStatus("Pick at least one rating before saving."); return; }
+    if (Object.values(picks).every(v => v == null)) { setStatus("Pick at least one rating before saving."); return; }
     const t = new Date($("ciWhen").value).getTime();
     if (!isFinite(t)) { setStatus("Pick the time for this check-in."); return; }
     if (!store) { setStatus("Your log is still loading. Try again in a moment."); return; }
-    const entry = { t, focus: picks.focus, mood: picks.mood, anx: picks.anx, note: $("ciNote").value.trim().slice(0, 200) };
+    const entry = { t, scale: 10, focus: picks.focus, mood: picks.mood, anx: picks.anx, mot: picks.mot, note: $("ciNote").value.trim().slice(0, 200) };
     try {
       await store.addCheckin(entry);
       setStatus(`Check-in saved at ${hm(new Date(t))} (estimated level ${levelAt(t).toFixed(0)} ng/mL).`);
@@ -842,14 +898,21 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
   }
 
   // ---------- storage ----------
-  // Every entry is {id, kind: "dose"|"checkin", t, ...}. Doses carry mg; check-ins carry focus, mood, anx (1–5) and note.
-  const okRating = (v) => Number.isInteger(+v) && +v >= 1 && +v <= 5;
+  // Every entry is {id, kind: "dose"|"checkin", t, ...}. Doses carry mg; check-ins carry focus, mood, anx, mot (1–10) and note.
+  // Check-ins saved before the 1–10 change have no "scale" field and were 1–5; they are stretched onto 1–10 when read.
+  const okRating = (v, max = 10) => v !== "" && v != null && isFinite(+v) && +v >= 1 && +v <= max;
+  const from5 = (v) => Math.round((1 + (v - 1) * 9 / 4) * 10) / 10;
+  const rating = (v, scale) => {
+    if (scale === 10) return okRating(v) ? +v : null;
+    return okRating(v, 5) ? from5(+v) : null;
+  };
   function setData(list) {
     doses = list.filter(d => (d.kind || "dose") === "dose" && isFinite(d.t) && isFinite(d.mg))
       .map(d => ({ id: d.id, t: +d.t, mg: +d.mg })).sort((a, b) => a.t - b.t);
     checkins = list.filter(d => d.kind === "checkin" && isFinite(d.t))
-      .map(d => ({ id: d.id, t: +d.t, focus: okRating(d.focus) ? +d.focus : null, mood: okRating(d.mood) ? +d.mood : null,
-                   anx: okRating(d.anx) ? +d.anx : null, note: typeof d.note === "string" ? d.note.slice(0, 200) : "" }))
+      .map(d => { const s = d.scale === 10 ? 10 : 5;
+        return { id: d.id, t: +d.t, focus: rating(d.focus, s), mood: rating(d.mood, s), anx: rating(d.anx, s),
+                 mot: s === 10 ? rating(d.mot, 10) : null, note: typeof d.note === "string" ? d.note.slice(0, 200) : "" }; })
       .sort((a, b) => a.t - b.t);
     renderAll();
   }
@@ -863,7 +926,8 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     setData(read());
     const newId = () => "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     return {
-      async add(d) { const l = read(); l.push({ id: newId(), kind: "dose", ...d }); write(l); setData(l); },
+      async add(d) { const l = read(); const id = newId(); l.push({ id, kind: "dose", ...d }); write(l); setData(l); return id; },
+      async update(id, patch) { const l = read().map(x => x.id === id ? { ...x, ...patch } : x); write(l); setData(l); },
       async addMany(arr) { const l = read(); arr.forEach(d => l.push({ id: newId(), kind: "dose", ...d })); write(l); setData(l); },
       async addEntries(arr) { const l = read(); arr.forEach(d => l.push({ id: newId(), ...d })); write(l); setData(l); },
       async addCheckin(c) { const l = read(); l.push({ id: newId(), kind: "checkin", ...c }); write(l); setData(l); },
@@ -872,8 +936,8 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
   }
 
   // ---------- CSV import / export ----------
-  // Format: time,dose_mg,focus,mood,anxiety,note  (a dose row has dose_mg; a check-in row has ratings).
-  // The old two-column file (time,dose_mg) still imports.
+  // Format: time,dose_mg,focus,mood,anxiety,motivation,note (ratings 1–10; a dose row has dose_mg, a check-in row has ratings).
+  // Older exports (time,dose_mg,focus,mood,anxiety,note with 1–5 ratings) and the two-column dose file still import.
   function splitCsv(line) {
     const cells = []; let cur = "", q = false;
     for (let i = 0; i < line.length; i++) {
@@ -891,6 +955,8 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
   }
   function parseCsv(text) {
     const out = [], bad = [];
+    const header = (text.split(/\r?\n/).find(l => /^\s*time\s*,/i.test(l)) || "").toLowerCase();
+    const ten = /motivation/.test(header);
     text.split(/\r?\n/).forEach((line, i) => {
       if (!line.trim() || /^\s*time\s*,/i.test(line)) return;
       const c = splitCsv(line);
@@ -898,15 +964,16 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       if (!m) { bad.push(i + 1); return; }
       const t = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime();
       const mg = parseFloat(c[1]);
-      const r = (v) => okRating(v) && v !== "" ? +v : null;
-      const focus = r(c[2]), mood = r(c[3]), anx = r(c[4]);
+      const r = (v) => rating(v, ten ? 10 : 5);
+      const focus = r(c[2]), mood = r(c[3]), anx = r(c[4]), mot = ten ? r(c[5]) : null;
+      const note = ((ten ? c[6] : c[5]) || "").slice(0, 200);
       if (isFinite(mg) && mg > 0) out.push({ kind: "dose", t, mg });
-      else if (focus != null || mood != null || anx != null) out.push({ kind: "checkin", t, focus, mood, anx, note: (c[5] || "").slice(0, 200) });
+      else if ([focus, mood, anx, mot].some(v => v != null)) out.push({ kind: "checkin", scale: 10, t, focus, mood, anx, mot, note });
       else bad.push(i + 1);
     });
     return { out, bad };
   }
-  const entryKey = (d) => d.kind === "dose" ? `d|${Math.round(d.t / 60000)}|${d.mg}` : `c|${Math.round(d.t / 60000)}|${d.focus}|${d.mood}|${d.anx}`;
+  const entryKey = (d) => d.kind === "dose" ? `d|${Math.round(d.t / 60000)}|${d.mg}` : `c|${Math.round(d.t / 60000)}|${d.focus}|${d.mood}|${d.anx}|${d.mot ?? null}`;
   $("csvFile").addEventListener("change", async (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
@@ -929,9 +996,9 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
   $("exportBtn").addEventListener("click", async () => {
     const rows = [...doses.map(d => ({ kind: "dose", ...d })), ...checkins.map(c => ({ kind: "checkin", ...c }))].sort((a, b) => a.t - b.t);
     if (!rows.length) { setStatus("Nothing to export yet."); return; }
-    const csv = "time,dose_mg,focus,mood,anxiety,note\n" + rows.map(r => r.kind === "dose"
-      ? `${stamp(r.t)},${r.mg},,,,`
-      : `${stamp(r.t)},,${csvCell(r.focus)},${csvCell(r.mood)},${csvCell(r.anx)},${csvCell(r.note)}`).join("\n") + "\n";
+    const csv = "time,dose_mg,focus,mood,anxiety,motivation,note\n" + rows.map(r => r.kind === "dose"
+      ? `${stamp(r.t)},${r.mg},,,,,`
+      : `${stamp(r.t)},,${csvCell(r.focus)},${csvCell(r.mood)},${csvCell(r.anx)},${csvCell(r.mot)},${csvCell(r.note)}`).join("\n") + "\n";
     const d = new Date();
     const name = `dex_log_${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.csv`;
     const file = new File([csv], name, { type: "text/csv" });
@@ -1022,6 +1089,94 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
 
   // ---------- boot ----------
   store = localStore();
+
+  // ---------- NFC / link quick-log ----------
+  // Open the app with ?tap (or #tap, ?dose=5, #dose-10) to get the quick-log sheet.
+  const MERGE_MS = 3 * 60000;   // a second tap this soon adds to the same dose
+  const SOON_MS = 60 * 60000;   // warn if the last dose was less than an hour ago
+  let tapTimer = null, tapClockTimer = null, tapUndo = null;
+  function tapRequest() {
+    const q = new URLSearchParams(location.search);
+    const h = decodeURIComponent(location.hash.replace(/^#/, ""));
+    const hm2 = h.match(/^dose-?([\d.]+)$/);
+    if (!(q.has("tap") || q.has("dose") || h === "tap" || hm2)) return null;
+    const want = parseFloat(q.get("dose") || (hm2 && hm2[1]));
+    return { preferred: [2.5, 5, 10].includes(want) ? want : 5 };
+  }
+  function clearTapParams() {
+    try { history.replaceState(null, "", location.pathname); } catch (e) {}
+  }
+  function lastDose() { const now = Date.now(); const past = doses.filter(d => d.t <= now); return past[past.length - 1] || null; }
+  function renderTapInfo() {
+    const now = Date.now();
+    $("tapClock").textContent = hm(new Date(now));
+    const last = lastDose();
+    const el = $("tapLast");
+    const merge = $("tapMerge");
+    if (!last) { el.textContent = "No doses logged yet."; el.classList.remove("soon"); merge.hidden = true; return; }
+    const gap = now - last.t;
+    const lvl = levelAt(now), slope = levelAt(now + 15 * 60000) - lvl;
+    const dir = Math.abs(slope) < 0.05 ? "steady" : slope > 0 ? "rising" : "falling";
+    el.innerHTML = `Last dose <b>${last.mg} mg</b> at <b>${hm(new Date(last.t))}</b> · <b>${agoText(gap)}</b><br>Level now ≈ ${lvl.toFixed(0)} ng/mL, ${dir}`;
+    el.classList.toggle("soon", gap < SOON_MS);
+    if (gap < MERGE_MS) {
+      merge.hidden = false;
+      merge.textContent = `You logged ${last.mg} mg ${agoText(gap)}. Tapping an amount adds it to that dose.`;
+    } else merge.hidden = true;
+  }
+  function openTapSheet(preferred) {
+    $("tapChoose").hidden = false; $("tapResult").hidden = true; $("tapUndo").hidden = true;
+    $("tapCancel").textContent = "Cancel";
+    document.querySelectorAll("#tapSheet [data-mg]").forEach(b => b.classList.toggle("main", +b.dataset.mg === preferred));
+    renderTapInfo();
+    $("tapSheet").hidden = false;
+    clearInterval(tapClockTimer); tapClockTimer = setInterval(renderTapInfo, 10000);
+    const main = document.querySelector(`#tapSheet [data-mg="${preferred}"]`);
+    setTimeout(() => main && main.focus(), 50);
+  }
+  function closeTapSheet() {
+    $("tapSheet").hidden = true;
+    clearInterval(tapClockTimer); clearTimeout(tapTimer); tapUndo = null;
+  }
+  document.querySelectorAll("#tapSheet [data-mg]").forEach(b => b.addEventListener("click", async () => {
+    const mg = +b.dataset.mg;
+    const now = Date.now();
+    const last = lastDose();
+    try {
+      if (last && now - last.t < MERGE_MS) {
+        const before = last.mg, total = +(before + mg).toFixed(2);
+        await store.update(last.id, { mg: total });
+        tapUndo = () => store.update(last.id, { mg: before });
+        $("tapDone").textContent = `Updated: ${total} mg at ${hm(new Date(last.t))}`;
+      } else {
+        const id = await store.add({ t: now, mg });
+        tapUndo = () => store.remove(id);
+        $("tapDone").textContent = `Logged ${mg} mg at ${hm(new Date(now))}`;
+      }
+    } catch (e) { $("tapDone").textContent = "Couldn't save that dose."; }
+    clearInterval(tapClockTimer);
+    $("tapChoose").hidden = true; $("tapMerge").hidden = true; $("tapResult").hidden = false;
+    $("tapUndo").hidden = !tapUndo; $("tapCancel").textContent = "Done";
+    $("tapCancel").focus();
+    clearTimeout(tapTimer); tapTimer = setTimeout(closeTapSheet, 8000);
+  }));
+  $("tapUndo").addEventListener("click", async () => {
+    if (!tapUndo) return;
+    try { await tapUndo(); setStatus("Undone."); } catch (e) { setStatus("Couldn't undo. Delete it from the log instead."); }
+    closeTapSheet();
+  });
+  $("tapCancel").addEventListener("click", closeTapSheet);
+  $("tapSheet").addEventListener("click", (e) => { if (e.target === $("tapSheet")) closeTapSheet(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tapSheet").hidden) closeTapSheet(); });
+  function checkTap() {
+    const req = tapRequest();
+    if (!req) return;
+    clearTapParams();
+    openTapSheet(req.preferred);
+  }
+  checkTap();
+  window.addEventListener("hashchange", checkTap);
+  window.addEventListener("pageshow", (e) => { if (e.persisted) checkTap(); });
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
