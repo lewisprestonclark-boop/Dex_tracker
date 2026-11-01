@@ -923,7 +923,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       ctx.fillText(`peak ${ys[pi].toFixed(1)}`, px, y(ys[pi]) - 6);
     }
     // projected "clear" point
-    if (nowIn) {
+    if (t1 > now) {
       const ct = timeBelow(settings.clear, now);
       if (ct && ct > now && ct <= t1) {
         const cx = Math.round(x(ct)) + 0.5;
@@ -979,7 +979,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     const spanTxt = windowH >= 48 ? `${+(windowH / 24).toFixed(windowH % 24 ? 1 : 0)} days` : `${Math.round(windowH)} h`;
     $("rangeLabel").textContent = live ? `Live · ${spanTxt}` :
       `${dateLabel(a)} ${hm(a)} – ${dateLabel(b)} ${hm(b)}`;
-    $("nextBtn").disabled = live;
+    $("nextBtn").disabled = t1 >= futureLimit() - 60000;
     $("liveBtn").disabled = live;
     $("prevBtn").disabled = doses.length ? t0 <= doses[0].t - DAY : true;
   }
@@ -1031,8 +1031,15 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     zctx.beginPath(); zctx.moveTo(x(ts[0]), y(0));
     ts.forEach((t, i) => zctx.lineTo(x(t), y(ys[i])));
     zctx.lineTo(x(ts[N]), y(0)); zctx.closePath(); zctx.fillStyle = c.soft; zctx.fill();
-    zctx.beginPath(); ts.forEach((t, i) => i ? zctx.lineTo(x(t), y(ys[i])) : zctx.moveTo(x(t), y(ys[i])));
-    zctx.strokeStyle = c.z; zctx.lineWidth = 2; zctx.stroke();
+    const nowZ = Date.now();
+    const seg = (pred, dash) => {
+      zctx.beginPath(); let on = false;
+      ts.forEach((t, i) => { if (!pred(t, i)) return; on ? zctx.lineTo(x(t), y(ys[i])) : zctx.moveTo(x(t), y(ys[i])); on = true; });
+      zctx.setLineDash(dash); zctx.strokeStyle = c.z; zctx.lineWidth = 2; zctx.globalAlpha = dash.length ? 0.65 : 1; zctx.stroke();
+      zctx.setLineDash([]); zctx.globalAlpha = 1;
+    };
+    seg((t, i) => t <= nowZ || (i > 0 && ts[i - 1] <= nowZ), []);
+    seg((t, i) => t >= nowZ || (i < N && ts[i + 1] >= nowZ), [5, 5]);
     zops.forEach(d => {
       if (d.t < t0 || d.t > t1) return;
       const px = Math.round(x(d.t)) + 0.5;
@@ -1469,8 +1476,12 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     drawChart();
   });
   $("nextBtn").addEventListener("click", () => {
-    viewEnd += windowH * HOUR * 0.85;
-    if (viewEnd >= Date.now()) { live = true; }
+    const [t0, t1] = viewRange();
+    const step = windowH * HOUR * 0.85;
+    const le = liveEnd(windowH);
+    // coming forward from the past: stop at the live view on the way through
+    if (!live && t1 < le - 60000 && t1 + step >= le) { live = true; drawChart(); return; }
+    setRange(t0 + step, t1 + step);
     drawChart();
   });
   $("liveBtn").addEventListener("click", () => { live = true; drawChart(); });
@@ -1480,6 +1491,12 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
   let raf = 0;
   const redraw = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawChart(); }); };
   const MIN_H = 3, MAX_H = 24 * 120;
+  function futureLimit() {
+    const now = Date.now();
+    const ct = timeBelow(settings.clear, now) || now;
+    return Math.min(now + 14 * DAY, Math.max(now + 3 * DAY, ct + 3 * DAY));
+  }
+  function liveEnd(spanH) { return Date.now() + Math.min(12, spanH / 4) * HOUR; }
   function setRange(t0, t1) {
     const now = Date.now();
     let span = Math.min(Math.max((t1 - t0) / HOUR, MIN_H), MAX_H) * HOUR;
@@ -1489,7 +1506,11 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     if (t0 < first - 2 * DAY) { t1 += (first - 2 * DAY) - t0; t0 = first - 2 * DAY; }
     windowH = span / HOUR;
     const ahead = Math.min(12, windowH / 4) * HOUR;
-    if (t1 >= now + ahead - 60000) { live = true; } else { live = false; viewEnd = t1; }
+    // future: allowed up to futureLimit(); snap back to live only when the view lines up with the live position
+    const lim = futureLimit();
+    if (t1 > lim) { t0 -= t1 - lim; t1 = lim; }
+    const snap = Math.max(10 * 60000, span * 0.02);
+    if (Math.abs(t1 - (now + ahead)) < snap) { live = true; } else { live = false; viewEnd = t1; }
     document.querySelectorAll("#winSeg button").forEach(b => b.setAttribute("aria-pressed", String(Math.abs(+b.dataset.h - windowH) < 0.01)));
     redraw();
   }
