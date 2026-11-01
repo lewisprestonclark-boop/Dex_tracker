@@ -103,7 +103,9 @@ h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color
 .nav .range { flex: 1 1 auto; text-align: center; font-family: var(--font-data); font-size: 0.82rem; color: var(--muted); min-width: 0; }
 .iconbtn { font: inherit; font-size: 0.82rem; background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
 .iconbtn:disabled { opacity: 0.4; cursor: default; }
-canvas { display: block; width: 100%; height: 280px; touch-action: pan-y; }
+canvas { display: block; width: 100%; height: 280px; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+canvas.dragging { cursor: grabbing; }
+.gesture-hint { font-size: 0.75rem; color: var(--muted); text-align: center; margin-top: 4px; }
 
 form.add { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
 .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -188,7 +190,7 @@ details summary { cursor: pointer; font-size: 0.8rem; text-transform: uppercase;
 .legend .lmo::before { border-top-color: var(--c-mot); }
 .legend .band::before { height: 10px; border: 0; background: var(--band-soft); outline: 1px solid var(--c-mood); }
 .feel-legend { margin-top: 6px; }
-#zchart { height: 130px; margin-top: 8px; border-top: 1px solid var(--line); padding-top: 4px; }
+#zchart { height: 150px; margin-top: 8px; border-top: 1px solid var(--line); padding-top: 4px; }
 .legend .lz::before { border-top-color: var(--c-zop); }
 .night .sub-h { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; margin: 4px 0 0; }
 .night .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
@@ -199,6 +201,8 @@ details summary { cursor: pointer; font-size: 0.8rem; text-transform: uppercase;
 .trendbox { font-size: 0.88rem; background: var(--zop-soft); border-radius: 10px; padding: 10px 12px; }
 .trendbox b { font-family: var(--font-data); }
 td.z { color: var(--c-zop); }
+.xdel { margin-left: 8px; padding: 2px 7px; font-size: 0.75rem; line-height: 1.3; vertical-align: middle; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .tag.zop { color: var(--c-zop); border-color: var(--c-zop); }
 .tag.sleep { color: var(--c-mood); border-color: var(--c-mood); }
 .checkin { display: flex; flex-direction: column; gap: 10px; }
@@ -293,6 +297,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     </div>
     <canvas id="zchart" aria-label="Estimated zopiclone level over the same time span"></canvas>
     <div class="legend feel-legend"><span class="lz">Zopiclone level (ng/mL)</span></div>
+    <div class="gesture-hint">Drag sideways to scroll · pinch or Ctrl + scroll to zoom · tap or hover for values</div>
     <div class="nav">
       <button type="button" class="iconbtn" id="prevBtn" aria-label="Earlier">← Earlier</button>
       <div class="range" id="rangeLabel">—</div>
@@ -794,6 +799,34 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
   const canvas = $("chart");
   const ctx = canvas.getContext("2d");
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  // Tick marks for any span, shared by the level chart and the zopiclone chart.
+  function makeTicks(t0, t1) {
+    const spanH = (t1 - t0) / HOUR;
+    const tickH = spanH <= 6 ? 1 : spanH <= 12 ? 2 : spanH <= 24 ? 4 : spanH <= 48 ? 8 : spanH <= 96 ? 12
+                : spanH <= 192 ? 24 : spanH <= 400 ? 48 : spanH <= 900 ? 120 : 240;
+    const out = [];
+    let tick;
+    if (tickH >= 24) { tick = startOfDay(t0); while (tick < t0) tick = addDays(tick, 1); }
+    else { const f = new Date(t0); f.setMinutes(0, 0, 0); tick = f.getTime(); while (tick < t0 || new Date(tick).getHours() % tickH) tick += HOUR; }
+    for (; tick <= t1; tick = tickH >= 24 ? addDays(tick, tickH / 24) : tick + tickH * HOUR) {
+      const d = new Date(tick);
+      const label = tickH >= 24 ? (spanH > 192 ? `${d.getDate()} ${monNames[d.getMonth()]}` : `${dayNames[d.getDay()]} ${d.getDate()}`)
+                  : d.getHours() === 0 ? `${dayNames[d.getDay()]} ${d.getDate()}` : hm(d);
+      out.push({ t: tick, label });
+    }
+    return out;
+  }
+  function drawTicks(g, ticks, x, L, R, W, yAxis, colors) {
+    g.font = `11px ${css("--font-data")}`; g.textAlign = "center"; g.textBaseline = "top";
+    ticks.forEach(({ t, label }) => {
+      const px = x(t);
+      g.fillStyle = colors.muted;
+      if (px > L + 18 && px < W - R - 18) g.fillText(label, px, yAxis + 8);
+      g.strokeStyle = colors.line; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(Math.round(px) + 0.5, yAxis); g.lineTo(Math.round(px) + 0.5, yAxis + 4); g.stroke();
+    });
+  }
+  let cursorT = null;   // time under the finger / mouse, or null
   function viewRange() {
     const now = Date.now();
     if (live) {
@@ -837,28 +870,14 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       ctx.fillStyle = c.muted; ctx.textAlign = "right"; ctx.fillText(String(v), L - 6, y(v));
     }
     // x ticks
-    const tickH = windowH <= 12 ? 2 : windowH <= 24 ? 4 : windowH <= 48 ? 8 : windowH <= 168 ? 24 : 120;
-    let tick;
-    if (tickH >= 24) { tick = startOfDay(t0); while (tick < t0) tick = addDays(tick, 1); }
-    else { const f = new Date(t0); f.setMinutes(0, 0, 0); f.setHours(Math.ceil((f.getHours() + (t0 > f.getTime() ? 1 : 0)) / tickH) * tickH); tick = f.getTime(); }
-    ctx.textAlign = "center"; ctx.textBaseline = "top";
-    for (; tick <= t1; tick = tickH >= 24 ? addDays(tick, tickH / 24) : tick + tickH * HOUR) {
-      if (tick < t0) continue;
-      const d = new Date(tick), px = x(tick);
-      const label = tickH >= 24 ? (windowH > 168 ? `${d.getDate()} ${monNames[d.getMonth()]}` : `${dayNames[d.getDay()]} ${d.getDate()}`)
-                  : d.getHours() === 0 ? `${dayNames[d.getDay()]} ${d.getDate()}` : hm(d);
-      ctx.fillStyle = c.muted;
-      if (px > L + 18 && px < W - R - 18) ctx.fillText(label, px, H - B + 8);
-      ctx.strokeStyle = c.line;
-      ctx.beginPath(); ctx.moveTo(Math.round(px) + 0.5, H - B); ctx.lineTo(Math.round(px) + 0.5, H - B + 4); ctx.stroke();
-    }
+    drawTicks(ctx, makeTicks(t0, t1), x, L, R, W, H - B, c);
     // highlight band
     if (settings.bandLo != null && settings.bandHi != null && settings.bandHi > settings.bandLo) {
       const yTop = y(Math.min(settings.bandHi, ymax)), yBot = y(Math.max(settings.bandLo, 0));
       fillBand(ctx, L, yTop, W - R - L, yBot - yTop, css("--band-soft"));
     }
     // dose markers
-    const showMg = windowH <= 48;
+    const showMg = (t1 - t0) / HOUR <= 48;
     doses.forEach(d => {
       if (d.t < t0 || d.t > t1) return;
       const px = Math.round(x(d.t)) + 0.5;
@@ -934,11 +953,31 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       ctx.fillStyle = c.now; ctx.textAlign = "left"; ctx.textBaseline = "middle";
       ctx.fillText(txt, lx, ly);
     }
+    if (cursorT != null && cursorT >= t0 && cursorT <= t1) {
+      const cx = Math.round(x(cursorT)) + 0.5, v = levelAt(cursorT);
+      ctx.strokeStyle = c.fg; ctx.globalAlpha = 0.55; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx, T); ctx.lineTo(cx, H - B); ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(cx, y(v), 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = c.accent; ctx.fill(); ctx.strokeStyle = c.surface; ctx.lineWidth = 2; ctx.stroke();
+      const d = new Date(cursorT);
+      const parts = [`${dateLabel(d)} ${hm(d)}`, `dex ${v.toFixed(1)} ng/mL`];
+      if (zops.length) parts.push(`zop ${zLevelAt(cursorT).toFixed(1)}`);
+      const txt = parts.join("  ·  ");
+      ctx.font = `600 12px ${font}`;
+      const tw = ctx.measureText(txt).width, bh = 22;
+      let bx = cx - tw / 2 - 8; bx = Math.max(L, Math.min(bx, W - R - tw - 16));
+      ctx.fillStyle = c.surface; ctx.strokeStyle = c.line; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, 0, tw + 16, bh, 6) : ctx.rect(bx, 0, tw + 16, bh); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = c.fg; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillText(txt, bx + 8, bh / 2 + 1);
+    }
     drawFeel(t0, t1, L, R);
     drawZop(t0, t1, L, R);
+    lastView = { t0, t1, L, R };
     // range label + nav state
     const a = new Date(t0), b = new Date(t1);
-    $("rangeLabel").textContent = live ? `Live · ${windowH >= 168 ? windowH / 24 + " days" : windowH + " h"}` :
+    const spanTxt = windowH >= 48 ? `${+(windowH / 24).toFixed(windowH % 24 ? 1 : 0)} days` : `${Math.round(windowH)} h`;
+    $("rangeLabel").textContent = live ? `Live · ${spanTxt}` :
       `${dateLabel(a)} ${hm(a)} – ${dateLabel(b)} ${hm(b)}`;
     $("nextBtn").disabled = live;
     $("liveBtn").disabled = live;
@@ -968,7 +1007,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     zctx.clearRect(0, 0, W, H);
     const c = { muted: css("--muted"), line: css("--line"), z: css("--c-zop"), soft: css("--zop-soft"), now: css("--now"), surface: css("--surface") };
     const font = css("--font-data");
-    const T = 12, B = 8;
+    const T = 14, B = 26;
     const N = Math.min(1200, Math.max(200, Math.round(W)));
     const ts = [], ys = [];
     for (let i = 0; i <= N; i++) { const t = t0 + (t1 - t0) * i / N; ts.push(t); ys.push(zLevelAt(t)); }
@@ -983,8 +1022,9 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       zctx.beginPath(); zctx.moveTo(L, Math.round(y(v)) + 0.5); zctx.lineTo(W - R, Math.round(y(v)) + 0.5); zctx.stroke();
       zctx.fillStyle = c.muted; zctx.fillText(String(Math.round(v)), L - 6, y(v));
     });
+    drawTicks(zctx, makeTicks(t0, t1), x, L, R, W, H - B, c);
     if (!zops.length) {
-      zctx.fillStyle = c.muted; zctx.textAlign = "center"; zctx.font = `12px ${css("--font-body")}`;
+      zctx.fillStyle = c.muted; zctx.textAlign = "center"; zctx.textBaseline = "middle"; zctx.font = `12px ${css("--font-body")}`;
       zctx.fillText("Log zopiclone below and its level appears here", L + (W - L - R) / 2, H / 2);
       return;
     }
@@ -1007,9 +1047,32 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       zctx.beginPath(); zctx.arc(nx, y(v), 4, 0, Math.PI * 2);
       zctx.fillStyle = c.now; zctx.fill(); zctx.strokeStyle = c.surface; zctx.lineWidth = 1.5; zctx.stroke();
     }
+    if (cursorT != null && cursorT >= t0 && cursorT <= t1) {
+      const cx = Math.round(x(cursorT)) + 0.5, v = zLevelAt(cursorT);
+      zctx.strokeStyle = css("--fg"); zctx.globalAlpha = 0.4; zctx.lineWidth = 1;
+      zctx.beginPath(); zctx.moveTo(cx, T); zctx.lineTo(cx, H - B); zctx.stroke(); zctx.globalAlpha = 1;
+      zctx.beginPath(); zctx.arc(cx, y(v), 4, 0, Math.PI * 2); zctx.fillStyle = c.z; zctx.fill();
+    }
   }
 
   // ---------- nights table ----------
+  // a two-tap delete button (no browser confirm dialogs)
+  function armedDelete(label, action) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "del xdel"; b.textContent = "✕";
+    b.setAttribute("aria-label", label); b.title = label;
+    let timer;
+    b.addEventListener("click", async () => {
+      if (!b.classList.contains("armed")) {
+        b.classList.add("armed"); b.textContent = "Delete?";
+        timer = setTimeout(() => { b.classList.remove("armed"); b.textContent = "✕"; }, 3500);
+        return;
+      }
+      clearTimeout(timer); b.disabled = true;
+      try { await action(); } catch (e) { b.disabled = false; setStatus("Couldn't delete that. Try again."); }
+    });
+    return b;
+  }
   function nightOf(ms) { const d = new Date(ms); if (d.getHours() < 6) d.setDate(d.getDate() - 1); return d; }
   function pairNights() {
     return zops.map((z, i) => {
@@ -1033,8 +1096,10 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       const tr = document.createElement("tr");
       const nd = nightOf(z.t);
       const cell = (v, suf = "") => v == null ? "–" : `${v}${suf}`;
-      tr.innerHTML = `<td>${dateLabel(nd)}</td><td class="z">${z.mg} mg ${hm(new Date(z.t))}</td><td>${dex.toFixed(0)} ng/mL</td>` +
-        `<td>${s ? cell(s.quality, "/10") : "–"}</td><td>${s ? cell(s.latency, " min") : "–"}</td><td>${s ? cell(s.woke) : "–"}</td><td>${s ? cell(s.groggy, "/10") : "–"}</td>`;
+      tr.innerHTML = `<td>${dateLabel(nd)}</td><td class="z"><span>${z.mg} mg ${hm(new Date(z.t))}</span></td><td>${dex.toFixed(0)} ng/mL</td>` +
+        `<td class="sq">${s ? cell(s.quality, "/10") : "–"}</td><td>${s ? cell(s.latency, " min") : "–"}</td><td>${s ? cell(s.woke) : "–"}</td><td>${s ? cell(s.groggy, "/10") : "–"}</td>`;
+      tr.querySelector("td.z").append(armedDelete("Delete zopiclone dose", async () => { await store.remove(z.id); setStatus(`Deleted zopiclone ${z.mg} mg from ${dateLabel(nd)}.`); }));
+      if (s) tr.querySelector("td.sq").append(armedDelete("Delete sleep entry", async () => { await store.remove(s.id); setStatus(`Deleted the sleep entry for ${dateLabel(nd)}.`); }));
       tb.appendChild(tr);
     });
     // trend: first half vs second half of rated nights
@@ -1126,6 +1191,11 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       fctx.beginPath(); fctx.moveTo(L, Math.round(y(v)) + 0.5); fctx.lineTo(W - R, Math.round(y(v)) + 0.5); fctx.stroke();
       fctx.fillStyle = c.muted; fctx.fillText(String(v), L - 6, y(v));
     });
+    if (cursorT != null && cursorT >= t0 && cursorT <= t1) {
+      fctx.strokeStyle = css("--fg"); fctx.globalAlpha = 0.4; fctx.lineWidth = 1;
+      const cx = Math.round(x(cursorT)) + 0.5;
+      fctx.beginPath(); fctx.moveTo(cx, T); fctx.lineTo(cx, H - B); fctx.stroke(); fctx.globalAlpha = 1;
+    }
     const inView = checkins.filter(ci => ci.t >= t0 && ci.t <= t1);
     if (!inView.length) {
       fctx.fillStyle = c.muted; fctx.textAlign = "center"; fctx.font = `12px ${css("--font-body")}`;
@@ -1404,6 +1474,103 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     drawChart();
   });
   $("liveBtn").addEventListener("click", () => { live = true; drawChart(); });
+
+  // ---------- chart gestures: drag to scroll, pinch / Ctrl+wheel to zoom, tap or hover for values ----------
+  let lastView = null;
+  let raf = 0;
+  const redraw = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawChart(); }); };
+  const MIN_H = 3, MAX_H = 24 * 120;
+  function setRange(t0, t1) {
+    const now = Date.now();
+    let span = Math.min(Math.max((t1 - t0) / HOUR, MIN_H), MAX_H) * HOUR;
+    const mid = (t0 + t1) / 2;
+    t0 = mid - span / 2; t1 = mid + span / 2;
+    const first = Math.min(doses.length ? doses[0].t : now, zops.length ? zops[0].t : now, checkins.length ? checkins[0].t : now);
+    if (t0 < first - 2 * DAY) { t1 += (first - 2 * DAY) - t0; t0 = first - 2 * DAY; }
+    windowH = span / HOUR;
+    const ahead = Math.min(12, windowH / 4) * HOUR;
+    if (t1 >= now + ahead - 60000) { live = true; } else { live = false; viewEnd = t1; }
+    document.querySelectorAll("#winSeg button").forEach(b => b.setAttribute("aria-pressed", String(Math.abs(+b.dataset.h - windowH) < 0.01)));
+    redraw();
+  }
+  function timeAt(canvasEl, clientX) {
+    if (!lastView) return null;
+    const r = canvasEl.getBoundingClientRect();
+    const { t0, t1, L, R } = lastView;
+    const f = (clientX - r.left - L) / (r.width - L - R);
+    return t0 + Math.min(Math.max(f, 0), 1) * (t1 - t0);
+  }
+  [$("chart"), $("feel"), $("zchart")].forEach(el => {
+    const pts = new Map();
+    let start = null;
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      const [t0, t1] = viewRange();
+      const list = [...pts.values()];
+      start = { t0, t1, moved: false, x: e.clientX, y: e.clientY,
+                dist: list.length === 2 ? Math.abs(list[0].x - list[1].x) : 0,
+                mid: list.length === 2 ? (list[0].x + list[1].x) / 2 : e.clientX };
+      if (list.length === 2) start.anchorT = timeAt(el, start.mid);
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!pts.has(e.pointerId)) {
+        if (e.pointerType === "mouse") { cursorT = timeAt(el, e.clientX); redraw(); }
+        return;
+      }
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const list = [...pts.values()];
+      const r = el.getBoundingClientRect();
+      const plotW = r.width - (lastView ? lastView.L + lastView.R : 52);
+      if (list.length >= 2 && start && start.dist > 0) {
+        // pinch: keep the time under the fingers' midpoint fixed
+        const dist = Math.max(20, Math.abs(list[0].x - list[1].x));
+        const span = (start.t1 - start.t0) * start.dist / dist;
+        const mid = (list[0].x + list[1].x) / 2;
+        const f = (mid - r.left - (lastView ? lastView.L : 40)) / plotW;
+        start.moved = true; cursorT = null;
+        setRange(start.anchorT - f * span, start.anchorT - f * span + span);
+      } else if (start) {
+        const dx = e.clientX - start.x;
+        if (!start.moved && Math.abs(dx) < 6) return;
+        start.moved = true; el.classList.add("dragging"); cursorT = null;
+        const shift = -dx / plotW * (start.t1 - start.t0);
+        setRange(start.t0 + shift, start.t1 + shift);
+      }
+    });
+    const end = (e) => {
+      if (!pts.has(e.pointerId)) return;
+      pts.delete(e.pointerId);
+      el.classList.remove("dragging");
+      if (start && !start.moved && e.type === "pointerup") {
+        const t = timeAt(el, e.clientX);
+        cursorT = (e.pointerType !== "mouse" && cursorT != null && Math.abs(t - cursorT) < (lastView.t1 - lastView.t0) * 0.02) ? null : t;
+        redraw();
+      }
+      if (pts.size === 1) { const [p] = [...pts.values()]; const [t0, t1] = viewRange(); start = { t0, t1, moved: true, x: p.x, y: p.y, dist: 0 }; }
+      else if (!pts.size) start = null;
+    };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+    el.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse" && !pts.size) { cursorT = null; redraw(); } });
+    el.addEventListener("wheel", (e) => {
+      const [t0, t1] = viewRange();
+      const r = el.getBoundingClientRect();
+      const plotW = r.width - (lastView ? lastView.L + lastView.R : 52);
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const anchor = timeAt(el, e.clientX);
+        const k = Math.exp(Math.max(-1, Math.min(1, e.deltaY * 0.01)));
+        setRange(anchor - (anchor - t0) * k, anchor + (t1 - anchor) * k);
+      } else if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey) {
+        e.preventDefault();
+        const d = (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX);
+        const shift = d / plotW * (t1 - t0);
+        setRange(t0 + shift, t1 + shift);
+      }
+    }, { passive: false });
+  });
   document.querySelectorAll("#periodSeg button").forEach(b => b.addEventListener("click", () => {
     periodDays = +b.dataset.d;
     document.querySelectorAll("#periodSeg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
