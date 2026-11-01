@@ -37,6 +37,8 @@ img { max-width: 100%; }
   --c-mood: #2e9b5f;
   --c-anx: #8a4fc7;
   --c-mot: #b8327a;
+  --c-zop: #4a5bd4;
+  --zop-soft: rgba(74,91,212,0.14);
   --band-soft: rgba(46,155,95,0.12);
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-data: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
@@ -46,7 +48,7 @@ img { max-width: 100%; }
     --bg: #0e171b; --surface: #15232a; --fg: #e3edf0; --muted: #8fa4ac; --line: #26373e;
     --accent: #4cc3cc; --accent-soft: rgba(76,195,204,0.16); --now: #ff7a8a; --dose: #e9b04a;
     --high: #ff8a80; --high-soft: rgba(255,138,128,0.13); --danger: #ff8a80;
-    --c-focus: #7aa8f5; --c-mood: #5fcf8e; --c-anx: #c39bf2; --c-mot: #f08cc0; --band-soft: rgba(95,207,142,0.12);
+    --c-focus: #7aa8f5; --c-mood: #5fcf8e; --c-anx: #c39bf2; --c-mot: #f08cc0; --c-zop: #9aa6ff; --zop-soft: rgba(154,166,255,0.16); --band-soft: rgba(95,207,142,0.12);
     color-scheme: dark;
   }
 }
@@ -54,7 +56,7 @@ img { max-width: 100%; }
   --bg: #0e171b; --surface: #15232a; --fg: #e3edf0; --muted: #8fa4ac; --line: #26373e;
   --accent: #4cc3cc; --accent-soft: rgba(76,195,204,0.16); --now: #ff7a8a; --dose: #e9b04a;
   --high: #ff8a80; --high-soft: rgba(255,138,128,0.13); --danger: #ff8a80;
-  --c-focus: #7aa8f5; --c-mood: #5fcf8e; --c-anx: #c39bf2; --c-mot: #f08cc0; --band-soft: rgba(95,207,142,0.12);
+  --c-focus: #7aa8f5; --c-mood: #5fcf8e; --c-anx: #c39bf2; --c-mot: #f08cc0; --c-zop: #9aa6ff; --zop-soft: rgba(154,166,255,0.16); --band-soft: rgba(95,207,142,0.12);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -73,6 +75,9 @@ h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color
 .clock b { color: var(--fg); font-weight: 600; }
 
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tiles:not(.four) { grid-template-columns: 1.3fr 1fr 1fr 1.2fr; }
+.clear-tile .value { color: var(--accent); }
+.clear-tile .sub b { color: var(--fg); font-weight: 700; }
 .tiles.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
 .stat .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
@@ -183,6 +188,19 @@ details summary { cursor: pointer; font-size: 0.8rem; text-transform: uppercase;
 .legend .lmo::before { border-top-color: var(--c-mot); }
 .legend .band::before { height: 10px; border: 0; background: var(--band-soft); outline: 1px solid var(--c-mood); }
 .feel-legend { margin-top: 6px; }
+#zchart { height: 130px; margin-top: 8px; border-top: 1px solid var(--line); padding-top: 4px; }
+.legend .lz::before { border-top-color: var(--c-zop); }
+.night .sub-h { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; margin: 4px 0 0; }
+.night .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.night hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; width: 100%; }
+.pick[data-k="sq"] button[aria-pressed="true"] { background: var(--c-mood); }
+.pick[data-k="sg"] button[aria-pressed="true"] { background: var(--c-anx); }
+.btn.zop { background: var(--c-zop); color: var(--surface); }
+.trendbox { font-size: 0.88rem; background: var(--zop-soft); border-radius: 10px; padding: 10px 12px; }
+.trendbox b { font-family: var(--font-data); }
+td.z { color: var(--c-zop); }
+.tag.zop { color: var(--c-zop); border-color: var(--c-zop); }
+.tag.sleep { color: var(--c-mood); border-color: var(--c-mood); }
 .checkin { display: flex; flex-direction: column; gap: 10px; }
 .scale { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); align-items: center; gap: 4px 12px; }
 .scale .name { font-weight: 700; font-size: 0.9rem; }
@@ -218,7 +236,8 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
 }
 @media (max-width: 520px) {
   .tiles { grid-template-columns: 1fr 1fr; }
-  .tiles .stat.primary { grid-column: 1 / -1; }
+  .tiles .stat.primary, .tiles .stat.clear-tile { grid-column: 1 / -1; }
+  .tiles:not(.four) { grid-template-columns: 1fr 1fr; }
   canvas { height: 230px; }
 }
 </style>
@@ -247,6 +266,11 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       <div class="value"><span id="last24">0</span><span class="unit">mg</span></div>
       <div class="sub" id="count24">0 doses</div>
     </div>
+    <div class="stat clear-tile">
+      <div class="label">Clears in</div>
+      <div class="value" id="clearIn">—</div>
+      <div class="sub" id="clearAt">&nbsp;</div>
+    </div>
   </div>
 
   <div class="card">
@@ -267,6 +291,8 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     <div class="legend feel-legend">
       <span class="lf">Focus</span><span class="lm">Mood</span><span class="la">Anxiety</span><span class="lmo">Motivation</span><span class="band">Highlight band</span>
     </div>
+    <canvas id="zchart" aria-label="Estimated zopiclone level over the same time span"></canvas>
+    <div class="legend feel-legend"><span class="lz">Zopiclone level (ng/mL)</span></div>
     <div class="nav">
       <button type="button" class="iconbtn" id="prevBtn" aria-label="Earlier">← Earlier</button>
       <div class="range" id="rangeLabel">—</div>
@@ -326,6 +352,59 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       </div>
       <button type="button" class="btn primary" id="ciSave">Save check-in</button>
     </div>
+  </section>
+
+  <section class="card night checkin-like" aria-labelledby="nightTitle">
+    <div class="card-head" style="margin-bottom:0">
+      <h2 id="nightTitle">Zopiclone &amp; sleep</h2>
+      <span class="kpi" id="zNow" style="font-size:.8rem;color:var(--muted)"></span>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="zMg">Zopiclone (mg)</label>
+        <input id="zMg" type="number" min="1" max="15" step="0.25" value="7.5">
+      </div>
+      <div class="field">
+        <label for="zWhen">Taken at</label>
+        <input id="zWhen" type="datetime-local">
+      </div>
+      <button type="button" class="btn zop" id="zSave">Log zopiclone</button>
+    </div>
+    <hr>
+    <p class="sub-h">How did you sleep? (fill in the morning)</p>
+    <div class="scale">
+      <div class="name">Sleep quality</div>
+      <div class="pick" data-k="sq" role="group" aria-label="Sleep quality, 1 to 10"></div>
+      <div class="ends"><span>terrible</span><span>great</span></div>
+    </div>
+    <div class="scale">
+      <div class="name">Groggy this morning</div>
+      <div class="pick" data-k="sg" role="group" aria-label="Morning grogginess, 1 to 10"></div>
+      <div class="ends"><span>clear-headed</span><span>very groggy</span></div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="sLat">Minutes to fall asleep</label>
+        <input id="sLat" type="number" min="0" max="600" step="5" placeholder="e.g. 30">
+      </div>
+      <div class="field">
+        <label for="sWake">Times woken</label>
+        <input id="sWake" type="number" min="0" max="30" step="1" placeholder="0">
+      </div>
+      <div class="field" style="flex:1 1 180px">
+        <label for="sNote">Note (optional)</label>
+        <input id="sNote" type="text" maxlength="200" placeholder="e.g. took it late, vivid dreams" style="width:100%;font-family:var(--font-body)">
+      </div>
+      <button type="button" class="btn primary" id="sSave">Save sleep</button>
+    </div>
+    <div class="trendbox" id="zTrend" hidden></div>
+    <div class="tablewrap" style="margin-top:0">
+      <table>
+        <thead><tr><th>Night</th><th>Zopiclone</th><th>Dex at dose</th><th>Sleep</th><th>To sleep</th><th>Woke</th><th>Groggy</th></tr></thead>
+        <tbody id="nightTable"></tbody>
+      </table>
+    </div>
+    <p class="hint">Each night pairs your zopiclone dose with the sleep rating you save the next morning. "Dex at dose" is the estimated dexamphetamine level when you took it, since stimulant still on board at bedtime can make it harder to fall asleep. Getting used to zopiclone shows up as taking longer to fall asleep or rating sleep lower on the same dose; the level chart can't show that, because the model assumes every dose acts the same.</p>
   </section>
 
   <section class="card" aria-labelledby="corrTitle">
@@ -432,6 +511,8 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       <div class="field"><label for="sMass">Body mass (kg)</label><input id="sMass" type="number" min="30" max="200" step="0.5" value="73"></div>
       <div class="field"><label for="sHalf">Half-life (h)</label><input id="sHalf" type="number" min="4" max="30" step="0.5" value="11"></div>
       <div class="field"><label for="sTmax">Time to peak (h)</label><input id="sTmax" type="number" min="1" max="6" step="0.25" value="3"></div>
+      <div class="field"><label for="sClear">Counts as clear below (ng/mL)</label><input id="sClear" type="number" min="0.1" max="20" step="0.1" value="1"></div>
+      <div class="field"><label for="sZHalf">Zopiclone half-life (h)</label><input id="sZHalf" type="number" min="2" max="12" step="0.5" value="5"></div>
     </div>
     <p class="note">One-compartment oral model with first-order absorption and elimination (Bateman function), 90% bioavailability, volume of distribution 3.5 L/kg. Doses add together by superposition. It's a population-average estimate, not a measured blood level; urine pH alone can shift the real half-life by several hours. Everything is stored only in this browser on this device; nothing is sent anywhere. For an NFC tag or shortcut, open this page's address with <code>?tap</code> on the end: it logs 5 mg straight away and lets you change or delete it. <code>?dose=2.5</code> or <code>?dose=10</code> logs that amount instead. Use Export CSV now and then as a backup. CSV import also reads the older two-column format: <code>time,dose_mg</code> with times like 2026-10-06 09:50.</p>
   </details>
@@ -442,7 +523,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
   const HOUR = 3.6e6, DAY = 24 * HOUR;
   // ---------- model ----------
   const F = 0.9, VD_PER_KG = 3.5;
-  const settings = { mass: 73, half: 11, tmax: 3, thr: 40, bandLo: null, bandHi: null };
+  const settings = { mass: 73, half: 11, tmax: 3, thr: 40, bandLo: null, bandHi: null, clear: 1, zHalf: 5 };
   try { const s = JSON.parse(localStorage.getItem("dex-settings") || "null"); if (s) Object.assign(settings, s); } catch (e) {}
   let KE, KA, VD;
   function solveKa(ke, tmax) {
@@ -453,7 +534,13 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     }
     return (lo + hi) / 2;
   }
-  function recompute() { KE = Math.log(2) / settings.half; KA = solveKa(KE, settings.tmax); VD = VD_PER_KG * settings.mass; }
+  function recompute() {
+    KE = Math.log(2) / settings.half; KA = solveKa(KE, settings.tmax); VD = VD_PER_KG * settings.mass;
+    ZKE = Math.log(2) / settings.zHalf; ZKA = solveKa(ZKE, Z_TMAX); ZVD = Z_VD_PER_KG * settings.mass;
+  }
+  // Zopiclone: ~80% oral bioavailability, peak ~1.5 h, half-life ~5 h (3.5–6.5), volume of distribution ~1.3 L/kg.
+  const Z_F = 0.8, Z_TMAX = 1.5, Z_VD_PER_KG = 1.3;
+  var ZKE, ZKA, ZVD;
   recompute();
   const conc = (h, mg) => h < 0 ? 0 : (F * mg * KA) / (VD * (KA - KE)) * (Math.exp(-KE * h) - Math.exp(-KA * h)) * 1000;
   // only doses within ~8 half-lives matter
@@ -464,10 +551,18 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     return s;
   }
   const near = (from, to) => doses.filter(d => d.t >= from - reach() && d.t <= to);
+  const concZ = (h, mg) => h < 0 ? 0 : (Z_F * mg * ZKA) / (ZVD * (ZKA - ZKE)) * (Math.exp(-ZKE * h) - Math.exp(-ZKA * h)) * 1000;
+  function zLevelAt(ms) {
+    let s = 0;
+    for (const d of zops) { if (d.t > ms) break; if (ms - d.t < 72 * HOUR) s += concZ((ms - d.t) / HOUR, d.mg); }
+    return s;
+  }
 
   // ---------- state ----------
   let doses = [];
   let checkins = [];
+  let zops = [];
+  let sleeps = [];
   let windowH = 24, live = true, viewEnd = Date.now(), periodDays = 30;
   let store = null;
   const $ = (id) => document.getElementById(id);
@@ -496,6 +591,55 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     const d = new Date();
     $("clock").innerHTML = `${dateLabel(d)} ${d.getFullYear()} · <b>${hm(d)}:${pad(d.getSeconds())}</b>`;
   }
+  // First time from `from` onward when the level is below `limit` and no longer rising.
+  // Exponential decay never reaches true zero, so "clear" means below settings.clear (default 1 ng/mL).
+  function timeBelow(limit, from = Date.now()) {
+    const STEP = 5 * 60000, MAX = from + 14 * DAY;
+    const lastT = doses.length ? doses[doses.length - 1].t : 0;
+    let t = from;
+    while (t < MAX) {
+      const v = levelAt(t);
+      if (v < limit && t >= lastT && levelAt(t + STEP) <= v) {
+        if (t === from) return from;
+        let lo = t - STEP, hi = t;            // refine to the minute
+        while (hi - lo > 60000) { const mid = (lo + hi) / 2; if (levelAt(mid) < limit) hi = mid; else lo = mid; }
+        return hi;
+      }
+      t += STEP;
+    }
+    return null;
+  }
+  function durText(ms) {
+    const mins = Math.max(0, Math.round(ms / 60000));
+    if (mins < 60) return `${mins} min`;
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return m ? `${h} h ${m} min` : `${h} h`;
+  }
+  function whenText(ms) {
+    const d = new Date(ms), now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
+    const day = sameDay ? "today" : d.toDateString() === tomorrow.toDateString() ? "tomorrow" : dayNames[d.getDay()];
+    return `${hm(d)} ${day}`;
+  }
+  function renderClear() {
+    const now = Date.now();
+    const lvl = levelAt(now);
+    const clearT = timeBelow(settings.clear, now);
+    if (!doses.length || (clearT === now && lvl < settings.clear)) {
+      $("clearIn").textContent = "Clear";
+      $("clearAt").textContent = `below ${settings.clear} ng/mL now`;
+      return;
+    }
+    if (clearT == null) { $("clearIn").textContent = "—"; $("clearAt").textContent = "more than 2 weeks away"; return; }
+    $("clearIn").textContent = `~${durText(clearT - now)}`;
+    let sub = `≈ <b>${whenText(clearT)}</b> (below ${settings.clear} ng/mL)`;
+    if (lvl > settings.thr) {
+      const hiT = timeBelow(settings.thr, now);
+      if (hiT && hiT > now) sub += `<br>Below ${settings.thr} in ~${durText(hiT - now)} (${hm(new Date(hiT))})`;
+    }
+    $("clearAt").innerHTML = sub;
+  }
   function renderStats() {
     const now = Date.now();
     const lvl = levelAt(now);
@@ -516,6 +660,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     const recent = past.filter(d => now - d.t <= DAY);
     $("last24").textContent = +recent.reduce((s, d) => s + d.mg, 0).toFixed(1);
     $("count24").textContent = `${recent.length} dose${recent.length === 1 ? "" : "s"}`;
+    renderClear();
   }
 
   // ---------- daily statistics ----------
@@ -594,7 +739,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
   function renderLog() {
     const ul = $("logList");
     ul.textContent = "";
-    if (!doses.length && !checkins.length) {
+    if (!doses.length && !checkins.length && !zops.length && !sleeps.length) {
       const li = document.createElement("li");
       li.className = "empty";
       li.textContent = "No doses yet. Log one above, or import your past log as a CSV.";
@@ -602,7 +747,8 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       return;
     }
     const now = Date.now();
-    const entries = [...doses.map(d => ({ ...d, kind: "dose" })), ...checkins.map(c => ({ ...c, kind: "checkin" }))].sort((a, b) => b.t - a.t);
+    const entries = [...doses.map(d => ({ ...d, kind: "dose" })), ...checkins.map(c => ({ ...c, kind: "checkin" })),
+                     ...zops.map(d => ({ ...d, kind: "zop" })), ...sleeps.map(s => ({ ...s, kind: "sleep" }))].sort((a, b) => b.t - a.t);
     entries.forEach(d => {
       const li = document.createElement("li");
       const dt = new Date(d.t);
@@ -611,6 +757,13 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       when.innerHTML = `${dateLabel(dt)} ${hm(dt)} <span class="ago">${d.t <= now ? agoText(now - d.t) : "future"}</span>`;
       const mg = document.createElement("span");
       if (d.kind === "dose") { mg.className = "mg"; mg.textContent = `${d.mg} mg`; }
+      else if (d.kind === "zop") { mg.className = "ci"; mg.innerHTML = `<span class="tag zop">Zopiclone</span><b>${d.mg} mg</b>`; }
+      else if (d.kind === "sleep") {
+        mg.className = "ci";
+        const bits = [d.quality != null ? `Sleep ${d.quality}/10` : "", d.latency != null ? `${d.latency} min` : "", d.woke != null ? `woke ${d.woke}×` : "", d.groggy != null ? `groggy ${d.groggy}/10` : ""].filter(Boolean).join(" · ");
+        mg.innerHTML = `<span class="tag sleep">Sleep</span>${bits}`;
+        if (d.note) { const n = document.createElement("span"); n.className = "nt"; n.textContent = " · " + d.note; mg.appendChild(n); }
+      }
       else {
         mg.className = "ci";
         const part = (k, cls, lab) => d[k] != null ? `<b class="${cls}">${lab}${d[k]}</b> ` : "";
@@ -629,7 +782,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
         }
         clearTimeout(timer);
         del.disabled = true;
-        try { await store.remove(d.id); setStatus(`Deleted ${d.kind === "dose" ? d.mg + " mg" : "check-in"} at ${dateLabel(dt)} ${hm(dt)}.`); }
+        try { await store.remove(d.id); setStatus(`Deleted ${d.kind === "dose" ? d.mg + " mg" : d.kind === "zop" ? "zopiclone " + d.mg + " mg" : d.kind === "sleep" ? "sleep entry" : "check-in"} at ${dateLabel(dt)} ${hm(dt)}.`); }
         catch (e) { del.disabled = false; setStatus("Couldn't delete that dose. Try again."); }
       });
       li.append(when, mg, del);
@@ -750,6 +903,21 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       const px = Math.min(Math.max(x(ts[pi]), L + 30), W - R - 30);
       ctx.fillText(`peak ${ys[pi].toFixed(1)}`, px, y(ys[pi]) - 6);
     }
+    // projected "clear" point
+    if (nowIn) {
+      const ct = timeBelow(settings.clear, now);
+      if (ct && ct > now && ct <= t1) {
+        const cx = Math.round(x(ct)) + 0.5;
+        ctx.strokeStyle = c.accent; ctx.lineWidth = 1; ctx.setLineDash([2, 3]); ctx.globalAlpha = 0.7;
+        ctx.beginPath(); ctx.moveTo(cx, y(Math.min(ymax * 0.35, ymax))); ctx.lineTo(cx, H - B); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha = 1;
+        ctx.fillStyle = c.accent; ctx.font = `11px ${font}`; ctx.textBaseline = "bottom";
+        const label = `clear ~${hm(new Date(ct))}`;
+        const lw = ctx.measureText(label).width;
+        ctx.textAlign = cx + lw / 2 > W - R ? "right" : "center";
+        ctx.fillText(label, ctx.textAlign === "right" ? W - R : cx, y(Math.min(ymax * 0.35, ymax)) - 4);
+      }
+    }
     // now marker
     if (nowIn) {
       const nx = Math.round(x(now)) + 0.5;
@@ -767,6 +935,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       ctx.fillText(txt, lx, ly);
     }
     drawFeel(t0, t1, L, R);
+    drawZop(t0, t1, L, R);
     // range label + nav state
     const a = new Date(t0), b = new Date(t1);
     $("rangeLabel").textContent = live ? `Live · ${windowH >= 168 ? windowH / 24 + " days" : windowH + " h"}` :
@@ -785,7 +954,156 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     document.querySelectorAll("#winSeg button").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.h === h)));
   }
 
-  function renderAll() { renderStats(); renderLog(); drawChart(); renderHigh(); renderCorr(); }
+  function renderAll() { renderStats(); renderLog(); drawChart(); renderHigh(); renderCorr(); renderNights(); }
+
+  // ---------- zopiclone chart ----------
+  const zCanvas = $("zchart");
+  const zctx = zCanvas.getContext("2d");
+  function drawZop(t0, t1, L, R) {
+    const dpr = window.devicePixelRatio || 1;
+    const W = zCanvas.clientWidth, H = zCanvas.clientHeight;
+    if (!W || !H) return;
+    zCanvas.width = Math.round(W * dpr); zCanvas.height = Math.round(H * dpr);
+    zctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    zctx.clearRect(0, 0, W, H);
+    const c = { muted: css("--muted"), line: css("--line"), z: css("--c-zop"), soft: css("--zop-soft"), now: css("--now"), surface: css("--surface") };
+    const font = css("--font-data");
+    const T = 12, B = 8;
+    const N = Math.min(1200, Math.max(200, Math.round(W)));
+    const ts = [], ys = [];
+    for (let i = 0; i <= N; i++) { const t = t0 + (t1 - t0) * i / N; ts.push(t); ys.push(zLevelAt(t)); }
+    const maxV = Math.max(10, ...ys);
+    const step = maxV > 80 ? 20 : maxV > 40 ? 10 : 5;
+    const ymax = Math.ceil(maxV * 1.1 / step) * step;
+    const x = (t) => L + (t - t0) / (t1 - t0) * (W - L - R);
+    const y = (v) => T + (1 - v / ymax) * (H - T - B);
+    zctx.font = `10px ${font}`; zctx.textBaseline = "middle"; zctx.textAlign = "right";
+    [0, ymax / 2, ymax].forEach(v => {
+      zctx.strokeStyle = c.line; zctx.lineWidth = 1;
+      zctx.beginPath(); zctx.moveTo(L, Math.round(y(v)) + 0.5); zctx.lineTo(W - R, Math.round(y(v)) + 0.5); zctx.stroke();
+      zctx.fillStyle = c.muted; zctx.fillText(String(Math.round(v)), L - 6, y(v));
+    });
+    if (!zops.length) {
+      zctx.fillStyle = c.muted; zctx.textAlign = "center"; zctx.font = `12px ${css("--font-body")}`;
+      zctx.fillText("Log zopiclone below and its level appears here", L + (W - L - R) / 2, H / 2);
+      return;
+    }
+    zctx.beginPath(); zctx.moveTo(x(ts[0]), y(0));
+    ts.forEach((t, i) => zctx.lineTo(x(t), y(ys[i])));
+    zctx.lineTo(x(ts[N]), y(0)); zctx.closePath(); zctx.fillStyle = c.soft; zctx.fill();
+    zctx.beginPath(); ts.forEach((t, i) => i ? zctx.lineTo(x(t), y(ys[i])) : zctx.moveTo(x(t), y(ys[i])));
+    zctx.strokeStyle = c.z; zctx.lineWidth = 2; zctx.stroke();
+    zops.forEach(d => {
+      if (d.t < t0 || d.t > t1) return;
+      const px = Math.round(x(d.t)) + 0.5;
+      zctx.strokeStyle = c.z; zctx.globalAlpha = 0.5; zctx.lineWidth = 1;
+      zctx.beginPath(); zctx.moveTo(px, T); zctx.lineTo(px, H - B); zctx.stroke(); zctx.globalAlpha = 1;
+      zctx.fillStyle = c.z; zctx.font = `10px ${font}`; zctx.textAlign = "center"; zctx.textBaseline = "top";
+      if (px > L + 14 && px < W - R - 10) zctx.fillText(`${d.mg}`, px, 0);
+    });
+    const now = Date.now();
+    if (now >= t0 && now <= t1) {
+      const v = zLevelAt(now), nx = x(now);
+      zctx.beginPath(); zctx.arc(nx, y(v), 4, 0, Math.PI * 2);
+      zctx.fillStyle = c.now; zctx.fill(); zctx.strokeStyle = c.surface; zctx.lineWidth = 1.5; zctx.stroke();
+    }
+  }
+
+  // ---------- nights table ----------
+  function nightOf(ms) { const d = new Date(ms); if (d.getHours() < 6) d.setDate(d.getDate() - 1); return d; }
+  function pairNights() {
+    return zops.map((z, i) => {
+      const nextZ = zops[i + 1] ? zops[i + 1].t : Infinity;
+      const s = sleeps.find(s => s.t > z.t && s.t <= Math.min(z.t + 18 * HOUR, nextZ));
+      return { z, s, dex: levelAt(z.t) };
+    });
+  }
+  function renderNights() {
+    const nights = pairNights();
+    const zl = zLevelAt(Date.now());
+    $("zNow").textContent = zops.length ? `zopiclone now ≈ ${zl.toFixed(zl < 10 ? 1 : 0)} ng/mL` : "";
+    const tb = $("nightTable");
+    tb.textContent = "";
+    if (!nights.length) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="7" class="empty">No zopiclone logged yet. Log tonight's dose above, then rate your sleep in the morning.</td>`;
+      tb.appendChild(tr);
+    }
+    nights.slice().reverse().slice(0, 30).forEach(({ z, s, dex }) => {
+      const tr = document.createElement("tr");
+      const nd = nightOf(z.t);
+      const cell = (v, suf = "") => v == null ? "–" : `${v}${suf}`;
+      tr.innerHTML = `<td>${dateLabel(nd)}</td><td class="z">${z.mg} mg ${hm(new Date(z.t))}</td><td>${dex.toFixed(0)} ng/mL</td>` +
+        `<td>${s ? cell(s.quality, "/10") : "–"}</td><td>${s ? cell(s.latency, " min") : "–"}</td><td>${s ? cell(s.woke) : "–"}</td><td>${s ? cell(s.groggy, "/10") : "–"}</td>`;
+      tb.appendChild(tr);
+    });
+    // trend: first half vs second half of rated nights
+    const box = $("zTrend");
+    const rated = nights.filter(n => n.s);
+    if (rated.length < 4) {
+      box.hidden = !nights.length;
+      box.innerHTML = nights.length ? `Rate ${4 - rated.length} more night${4 - rated.length === 1 ? "" : "s"} of sleep to see whether anything is changing over time.` : "";
+      return;
+    }
+    const half = Math.floor(rated.length / 2);
+    const a = rated.slice(0, half), b = rated.slice(rated.length - half);
+    const mean = (arr, f) => { const v = arr.map(f).filter(x => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
+    const line = (label, f, unit, better) => {
+      const m1 = mean(a, f), m2 = mean(b, f);
+      if (m1 == null || m2 == null) return "";
+      const diff = m2 - m1;
+      const word = Math.abs(diff) < (unit === " min" ? 5 : unit === " ng/mL" ? 3 : 0.75) ? "about the same" : unit === " ng/mL" ? (diff > 0 ? "higher" : "lower") : (better(diff) ? "better" : "worse");
+      return `<div>${label}: first ${half} nights <b>${m1.toFixed(unit === " min" ? 0 : 1)}${unit}</b> → last ${half} <b>${m2.toFixed(unit === " min" ? 0 : 1)}${unit}</b> (${word})</div>`;
+    };
+    const doseNote = new Set(rated.map(n => n.z.mg)).size > 1 ? "<div>Your dose changed between nights, so compare with care.</div>" : "";
+    box.hidden = false;
+    box.innerHTML = line("Time to fall asleep", n => n.s.latency, " min", d => d < 0) +
+                    line("Sleep quality", n => n.s.quality, "/10", d => d > 0) +
+                    line("Morning grogginess", n => n.s.groggy, "/10", d => d < 0) +
+                    line("Dex level at dose", n => n.dex, " ng/mL", d => d < 0) + doseNote;
+  }
+
+  // ---------- zopiclone + sleep forms ----------
+  const spicks = { sq: null, sg: null };
+  document.querySelectorAll(".night .pick").forEach(group => {
+    const k = group.dataset.k;
+    for (let v = 1; v <= 10; v++) {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = v; b.setAttribute("aria-pressed", "false");
+      b.setAttribute("aria-label", `${k === "sq" ? "Sleep quality" : "Grogginess"} ${v}`);
+      b.addEventListener("click", () => {
+        spicks[k] = spicks[k] === v ? null : v;
+        group.querySelectorAll("button").forEach((x, i) => x.setAttribute("aria-pressed", String(spicks[k] === i + 1)));
+      });
+      group.appendChild(b);
+    }
+  });
+  $("zWhen").value = toLocalInput(new Date());
+  $("zSave").addEventListener("click", async () => {
+    const mg = parseFloat($("zMg").value);
+    const t = new Date($("zWhen").value).getTime();
+    if (!isFinite(mg) || mg <= 0) { setStatus("Enter the zopiclone dose in mg, for example 7.5."); return; }
+    if (!isFinite(t)) { setStatus("Pick the time you took it."); return; }
+    try {
+      await store.add({ t, mg, med: "zop" });
+      setStatus(`Logged zopiclone ${mg} mg at ${hm(new Date(t))}. Estimated dex level then: ${levelAt(t).toFixed(0)} ng/mL.`);
+      $("zWhen").value = toLocalInput(new Date());
+    } catch (e) { setStatus("Couldn't save that dose."); }
+  });
+  $("sSave").addEventListener("click", async () => {
+    const lat = $("sLat").value.trim(), woke = $("sWake").value.trim();
+    if (spicks.sq == null && spicks.sg == null && lat === "" && woke === "") { setStatus("Add at least one sleep rating before saving."); return; }
+    const entry = { kind: "sleep", t: Date.now(), quality: spicks.sq, groggy: spicks.sg,
+                    latency: lat === "" ? null : Math.max(0, parseFloat(lat)), woke: woke === "" ? null : Math.max(0, parseInt(woke, 10)),
+                    note: $("sNote").value.trim().slice(0, 200) };
+    try {
+      await store.addEntries([entry]);
+      setStatus("Sleep saved.");
+      spicks.sq = spicks.sg = null;
+      document.querySelectorAll(".night .pick button").forEach(x => x.setAttribute("aria-pressed", "false"));
+      $("sLat").value = ""; $("sWake").value = ""; $("sNote").value = "";
+    } catch (e) { setStatus("Couldn't save that."); }
+  });
 
   // ---------- feel chart (same time axis as the level chart) ----------
   const feelCanvas = $("feel");
@@ -863,7 +1181,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
   // ---------- check-in form ----------
   const picks = { focus: null, mood: null, anx: null, mot: null };
   const scaleName = { focus: "Focus", mood: "Mood", anx: "Anxiety", mot: "Motivation" };
-  document.querySelectorAll(".pick").forEach(group => {
+  document.querySelectorAll(".checkin .pick").forEach(group => {
     const k = group.dataset.k;
     for (let v = 1; v <= 10; v++) {
       const b = document.createElement("button");
@@ -887,7 +1205,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       await store.addCheckin(entry);
       setStatus(`Check-in saved at ${hm(new Date(t))} (estimated level ${levelAt(t).toFixed(0)} ng/mL).`);
       Object.keys(picks).forEach(k => picks[k] = null);
-      document.querySelectorAll(".pick button").forEach(x => x.setAttribute("aria-pressed", "false"));
+      document.querySelectorAll(".checkin .pick button").forEach(x => x.setAttribute("aria-pressed", "false"));
       $("ciNote").value = ""; $("ciWhen").value = toLocalInput(new Date());
     } catch (e) { setStatus("Couldn't save that check-in. Check your connection and try again."); }
   });
@@ -910,8 +1228,16 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     return okRating(v, 5) ? from5(+v) : null;
   };
   function setData(list) {
-    doses = list.filter(d => (d.kind || "dose") === "dose" && isFinite(d.t) && isFinite(d.mg))
+    doses = list.filter(d => (d.kind || "dose") === "dose" && d.med !== "zop" && isFinite(d.t) && isFinite(d.mg))
       .map(d => ({ id: d.id, t: +d.t, mg: +d.mg })).sort((a, b) => a.t - b.t);
+    zops = list.filter(d => (d.kind || "dose") === "dose" && d.med === "zop" && isFinite(d.t) && isFinite(d.mg))
+      .map(d => ({ id: d.id, t: +d.t, mg: +d.mg })).sort((a, b) => a.t - b.t);
+    sleeps = list.filter(d => d.kind === "sleep" && isFinite(d.t))
+      .map(d => ({ id: d.id, t: +d.t, quality: okRating(d.quality) ? +d.quality : null, groggy: okRating(d.groggy) ? +d.groggy : null,
+                   latency: isFinite(d.latency) && d.latency !== null && d.latency !== "" ? +d.latency : null,
+                   woke: isFinite(d.woke) && d.woke !== null && d.woke !== "" ? +d.woke : null,
+                   note: typeof d.note === "string" ? d.note.slice(0, 200) : "" }))
+      .sort((a, b) => a.t - b.t);
     checkins = list.filter(d => d.kind === "checkin" && isFinite(d.t))
       .map(d => { const s = d.scale === 10 ? 10 : 5;
         return { id: d.id, t: +d.t, focus: rating(d.focus, s), mood: rating(d.mood, s), anx: rating(d.anx, s),
@@ -960,6 +1286,9 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     const out = [], bad = [];
     const header = (text.split(/\r?\n/).find(l => /^\s*time\s*,/i.test(l)) || "").toLowerCase();
     const ten = /motivation/.test(header);
+    const cols = splitCsv(header).map(s => s.toLowerCase());
+    const named = cols.includes("medication") || cols.includes("sleep_quality");
+    const col = (c, name) => { const i = cols.indexOf(name); return i < 0 ? "" : (c[i] || ""); };
     text.split(/\r?\n/).forEach((line, i) => {
       if (!line.trim() || /^\s*time\s*,/i.test(line)) return;
       const c = splitCsv(line);
@@ -967,6 +1296,22 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
       if (!m) { bad.push(i + 1); return; }
       const t = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime();
       const mg = parseFloat(c[1]);
+      if (named) {
+        const med = /zop/i.test(col(c, "medication")) ? "zop" : null;
+        const r10 = (v) => rating(v, 10);
+        const num = (v) => v === "" || !isFinite(+v) ? null : +v;
+        const sq = r10(col(c, "sleep_quality")), sg = r10(col(c, "grogginess"));
+        const lat = num(col(c, "minutes_to_sleep")), wk = num(col(c, "times_woken"));
+        const note = col(c, "note").slice(0, 200);
+        if (isFinite(mg) && mg > 0) out.push(med ? { kind: "dose", med, t, mg } : { kind: "dose", t, mg });
+        else if ([sq, sg, lat, wk].some(v => v != null)) out.push({ kind: "sleep", t, quality: sq, groggy: sg, latency: lat, woke: wk, note });
+        else {
+          const f = r10(col(c, "focus")), mo = r10(col(c, "mood")), an = r10(col(c, "anxiety")), mt = r10(col(c, "motivation"));
+          if ([f, mo, an, mt].some(v => v != null)) out.push({ kind: "checkin", scale: 10, t, focus: f, mood: mo, anx: an, mot: mt, note });
+          else bad.push(i + 1);
+        }
+        return;
+      }
       const r = (v) => rating(v, ten ? 10 : 5);
       const focus = r(c[2]), mood = r(c[3]), anx = r(c[4]), mot = ten ? r(c[5]) : null;
       const note = ((ten ? c[6] : c[5]) || "").slice(0, 200);
@@ -976,32 +1321,38 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     });
     return { out, bad };
   }
-  const entryKey = (d) => d.kind === "dose" ? `d|${Math.round(d.t / 60000)}|${d.mg}` : `c|${Math.round(d.t / 60000)}|${d.focus}|${d.mood}|${d.anx}|${d.mot ?? null}`;
+  const entryKey = (d) => d.kind === "dose" ? `d|${d.med || "dex"}|${Math.round(d.t / 60000)}|${d.mg}`
+    : d.kind === "sleep" ? `s|${Math.round(d.t / 60000)}|${d.quality}|${d.latency}|${d.groggy}`
+    : `c|${Math.round(d.t / 60000)}|${d.focus}|${d.mood}|${d.anx}|${d.mot ?? null}`;
   $("csvFile").addEventListener("change", async (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
     if (!file) return;
     try {
       const { out, bad } = parseCsv(await file.text());
-      const have = new Set([...doses.map(d => entryKey({ kind: "dose", ...d })), ...checkins.map(c => entryKey({ kind: "checkin", ...c }))]);
+      const have = new Set([...doses.map(d => entryKey({ kind: "dose", ...d })), ...checkins.map(c => entryKey({ kind: "checkin", ...c })),
+                            ...zops.map(d => entryKey({ kind: "dose", med: "zop", ...d })), ...sleeps.map(s => entryKey({ kind: "sleep", ...s }))]);
       const fresh = [];
       out.forEach(d => { const k = entryKey(d); if (!have.has(k)) { have.add(k); fresh.push(d); } });
       if (!fresh.length) { setStatus(out.length ? `Everything in that file (${out.length} entries) is already in your log.` : "Nothing found in that file. Expected lines like 2026-10-06 09:50,5.0"); return; }
       await store.addEntries(fresh);
-      const nd = fresh.filter(d => d.kind === "dose").length, nc = fresh.length - nd;
+      const nd = fresh.filter(d => d.kind === "dose").length, nc = fresh.filter(d => d.kind === "checkin").length, ns = fresh.filter(d => d.kind === "sleep").length;
       const skipped = out.length - fresh.length;
-      setStatus(`Imported ${nd} dose${nd === 1 ? "" : "s"}` + (nc ? ` and ${nc} check-in${nc === 1 ? "" : "s"}` : "") +
+      setStatus(`Imported ${nd} dose${nd === 1 ? "" : "s"}` + (nc ? `, ${nc} check-in${nc === 1 ? "" : "s"}` : "") + (ns ? `, ${ns} sleep entr${ns === 1 ? "y" : "ies"}` : "") +
         (skipped ? `, skipped ${skipped} already in your log` : "") + (bad.length ? `, couldn't read line${bad.length > 1 ? "s" : ""} ${bad.join(", ")}` : "") + ".");
     } catch (err) { setStatus("Couldn't import that file. Check it's a CSV from this tracker and try again."); }
   });
   const csvCell = (v) => v == null ? "" : /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
   const stamp = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${hm(d)}`; };
   $("exportBtn").addEventListener("click", async () => {
-    const rows = [...doses.map(d => ({ kind: "dose", ...d })), ...checkins.map(c => ({ kind: "checkin", ...c }))].sort((a, b) => a.t - b.t);
+    const rows = [...doses.map(d => ({ kind: "dose", med: "dexamphetamine", ...d })), ...zops.map(d => ({ kind: "dose", med: "zopiclone", ...d })),
+                  ...checkins.map(c => ({ kind: "checkin", ...c })), ...sleeps.map(s => ({ kind: "sleep", ...s }))].sort((a, b) => a.t - b.t);
     if (!rows.length) { setStatus("Nothing to export yet."); return; }
-    const csv = "time,dose_mg,focus,mood,anxiety,motivation,note\n" + rows.map(r => r.kind === "dose"
-      ? `${stamp(r.t)},${r.mg},,,,,`
-      : `${stamp(r.t)},,${csvCell(r.focus)},${csvCell(r.mood)},${csvCell(r.anx)},${csvCell(r.mot)},${csvCell(r.note)}`).join("\n") + "\n";
+    // columns: time,dose_mg,focus,mood,anxiety,motivation,note,medication,sleep_quality,minutes_to_sleep,times_woken,grogginess
+    const csv = "time,dose_mg,focus,mood,anxiety,motivation,note,medication,sleep_quality,minutes_to_sleep,times_woken,grogginess\n" + rows.map(r =>
+      r.kind === "dose" ? `${stamp(r.t)},${r.mg},,,,,,${r.med},,,,`
+      : r.kind === "sleep" ? `${stamp(r.t)},,,,,,${csvCell(r.note)},,${csvCell(r.quality)},${csvCell(r.latency)},${csvCell(r.woke)},${csvCell(r.groggy)}`
+      : `${stamp(r.t)},,${csvCell(r.focus)},${csvCell(r.mood)},${csvCell(r.anx)},${csvCell(r.mot)},${csvCell(r.note)},,,,,`).join("\n") + "\n";
     const d = new Date();
     const name = `dex_log_${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.csv`;
     const file = new File([csv], name, { type: "text/csv" });
@@ -1059,7 +1410,7 @@ td.f { color: var(--c-focus); } td.m { color: var(--c-mood); } td.a { color: var
     renderHigh();
   }));
   const saveSettings = () => { try { localStorage.setItem("dex-settings", JSON.stringify(settings)); } catch (e) {} };
-  [["sMass", "mass"], ["sHalf", "half"], ["sTmax", "tmax"], ["sThr", "thr"]].forEach(([id, key]) => {
+  [["sMass", "mass"], ["sHalf", "half"], ["sTmax", "tmax"], ["sThr", "thr"], ["sClear", "clear"], ["sZHalf", "zHalf"]].forEach(([id, key]) => {
     const el = $(id);
     el.value = settings[key];
     el.addEventListener("change", () => {
